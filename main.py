@@ -1,33 +1,33 @@
 from collections import defaultdict
-from typing import TypedDict
+from typing import NamedTuple
 import pyomo.environ as pyomo
 
-class Recipe(TypedDict):
-    inputs: list[(str, int)]
-    outputs: list[(str, int)]
+class Recipe(NamedTuple):
+    inputs: list[tuple[str, int]]
+    outputs: list[tuple[str, int]]
     duration: int
 
-recipe_hydrogen: Recipe = {
-    "inputs": [
+recipe_hydrogen = Recipe(
+    inputs = [
         ("water", 500)
     ],
-    "outputs": [
+    outputs = [
         ("oxygen", 500),
         ("hydrogen", 1000)
     ],
-    "duration": 1000,
-}
+    duration = 1000,
+)
 
-recipe_hydrogen_sulfude: Recipe = {
-    "inputs": [
+recipe_hydrogen_sulfude = Recipe(
+    inputs = [
         ("sulfur", 1),
         ("hydrogen", 2000)
     ],
-    "outputs": [
+    outputs = [
         ("hydrogen sulfide", 1000)
     ],
-    "duration": 60,
-}
+    duration = 60,
+)
 
 class Solver():
 
@@ -36,11 +36,16 @@ class Solver():
         self.model = model
         self.currLinkNum = 0
         self.currMachineNum = 0
+        self.machineNames = []
         self.sourceLinkMap = defaultdict(list)
         self.sinkLinkMap = defaultdict(list)
 
+        self.model.constraints = pyomo.ConstraintList()
+
 
     def solve(self):
+        # TODO: Add sanity checks (is target set, is objective set, etc)
+
         # Add source -> link constraints
         for source, links in self.sourceLinkMap.items():
             self.model.constraints.add(getattr(self.model, source) == -1 * sum(getattr(self.model, link) for link in links))
@@ -50,11 +55,11 @@ class Solver():
             self.model.constraints.add(getattr(self.model, sink) == sum(getattr(self.model, link) for link in links))
 
         # Target
-        self.model.constraints.add(self.model.a_hydrogen_sulfide >= 1000)
+        self.model.constraints.add(self.model.M1 >= 1000)
 
         # Objective
         self.model.objective = pyomo.Objective(
-            rule = lambda model: model.a_electrolyzer_hydrogen_recipe + model.a_lcr_hydrogen_sulfide_recipe,
+            rule = lambda model: sum([getattr(model, machine_name) for machine_name in self.machineNames]),
             sense = pyomo.minimize,
         )
 
@@ -63,18 +68,19 @@ class Solver():
         print(result)
 
 
-    def add_recipe(self, model: pyomo.Model, recipe: Recipe) -> int:
+    def add_recipe(self, recipe: Recipe) -> int:
         # Add machine variable
         machine_name = f"M{self.currMachineNum}"
-        setattr(model, machine_name, pyomo.Var(domain=pyomo.NonNegativeReals))
+        setattr(self.model, machine_name, pyomo.Var(domain=pyomo.NonNegativeReals))
         self.currMachineNum += 1
+        self.machineNames.append(machine_name)
 
         # Add variables and constraints for each input
-        for input_name, input_quantity in self.__get_inputs(recipe):
+        for input_name, input_quantity in recipe.inputs:
             # Add source if it does not exist yet
             source_name = f"I_{input_name}"
-            if not hasattr(model, source_name):
-                setattr(model, source_name, pyomo.Var(domain=pyomo.Reals))
+            if not hasattr(self.model, source_name):
+                setattr(self.model, source_name, pyomo.Var(domain=pyomo.Reals))
 
             # Name the link variables
             link_in = f"L{self.currLinkNum}_IN_{input_name}"
@@ -82,26 +88,26 @@ class Solver():
             self.currLinkNum += 1
 
             # Add the link variables
-            setattr(model, link_in, pyomo.Var(domain=pyomo.NonNegativeReals))
-            setattr(model, link_out, pyomo.Var(domain=pyomo.NonNegativeReals))
+            setattr(self.model, link_in, pyomo.Var(domain=pyomo.NonNegativeReals))
+            setattr(self.model, link_out, pyomo.Var(domain=pyomo.NonNegativeReals))
 
             # Add the link constraints
             # ## What goes in must come out
-            self.model.constraints.add(-1 * self.model[link_in] + self.model[link_out] == 0)
+            self.model.constraints.add(-1 * getattr(self.model, link_in) + getattr(self.model, link_out) == 0)
 
-            # TODO: How do we relate all links to their source?
+            # Relate all links to their source
             self.sourceLinkMap[source_name].append(link_in)
 
             # Add machine constraints for inputs
             ## The items coming from a link must match the number of machines * the recipe quantity.
-            model.constraints.add(model[machine_name] * input_quantity - model[link_out] == 0)
+            self.model.constraints.add(getattr(self.model, machine_name) * input_quantity - getattr(self.model, link_out) == 0)
 
         # Add variables and constraints for each output
-        for output_name, output_quantity in self.__get_outputs(recipe):
+        for output_name, output_quantity in recipe.outputs:
             # Add sink if it does not exist yet
             sink_name = f"O_{output_name}"
-            if not hasattr(model, sink_name):
-                setattr(model, sink_name, pyomo.Var(domain=pyomo.Reals))
+            if not hasattr(self.model, sink_name):
+                setattr(self.model, sink_name, pyomo.Var(domain=pyomo.Reals))
 
             # Name the link variables
             link_in = f"L{self.currLinkNum}_IN_{output_name}"
@@ -109,39 +115,20 @@ class Solver():
             self.currLinkNum += 1
 
             # Add the link variables
-            setattr(model, link_in, pyomo.Var(domain=pyomo.NonNegativeReals))
-            setattr(model, link_out, pyomo.Var(domain=pyomo.NonNegativeReals))
+            setattr(self.model, link_in, pyomo.Var(domain=pyomo.NonNegativeReals))
+            setattr(self.model, link_out, pyomo.Var(domain=pyomo.NonNegativeReals))
 
             # Add the link constraints
             ## What goes in must come out
-            model.constraints.add(-1 * model[link_in] + model[link_out] == 0)
+            self.model.constraints.add(-1 * getattr(self.model, link_in) + getattr(self.model, link_out) == 0)
 
-            # TODO: How do we relate all links to their sink?
+            # Relate all links to their sink
             self.sinkLinkMap[source_name].append(link_in)
 
             # Add machine constraints for inputs
             ## The items going out into a link must match the number of machines * the recipe quantity.
-            model.constraints.add(model[machine_name] * output_quantity - model[link_out] == 0)
+            self.model.constraints.add(getattr(self.model, machine_name) * output_quantity - getattr(self.model, link_out) == 0)
 
-
-
-    def __get_inputs(self, recipe: Recipe) -> list[str]:
-        return [input_name for input_name, _ in recipe["inputs"]]
-
-    def __get_outputs(self, recipe: Recipe) -> list[str]:
-        return [input_name for input_name, _ in recipe["outputs"]]
-
-    def __get_inputs_from_list(self, recipes: list[Recipe]) -> list[str]:
-        inputs = set()
-        for recipe in recipes:
-            inputs.update(self.__get_inputs(recipe))
-        return list(inputs)
-
-    def __get_outputs_from_list(self, recipes: list[Recipe]) -> list[str]:
-        outputs = set()
-        for recipe in recipes:
-            outputs.update(self.__get_inputs(recipe))
-        return list(outputs)
 
 def main():
     solver = Solver()
