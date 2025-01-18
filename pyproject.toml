@@ -3,5 +3,7 @@ name = "gtnh-toolkit"
 version = "0.1.0"
 description = "Tools for your GTNH adventure"
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "pyomo>=6.8.2",
+]
