@@ -37,6 +37,8 @@ class Solver():
         self.currLinkNum = 0
         self.currMachineNum = 0
         self.machineNames = []
+        self.itemInLinks = defaultdict(list)
+        self.itemOutLinks = defaultdict(list)
         self.sourceLinkMap = defaultdict(list)
         self.sinkLinkMap = defaultdict(list)
 
@@ -48,14 +50,25 @@ class Solver():
 
         # Add source -> link constraints
         for source, links in self.sourceLinkMap.items():
-            self.model.constraints.add(getattr(self.model, source) == -1 * sum(getattr(self.model, link) for link in links))
+            # Sources must be negative or 0.
+            self.model.constraints.add(getattr(self.model, source) <= 0)
+            # Sources must equal the sum of their outgoing links.
+            self.model.constraints.add(getattr(self.model, source) + sum(getattr(self.model, link) for link in links) == 0)
         
         # Add Link -> Sink constraints
-        for sink, links in self.sinkLinkMap.items():
-            self.model.constraints.add(getattr(self.model, sink) == sum(getattr(self.model, link) for link in links))
+        ## Sinks must be positive or 0
+        for sink, _ in self.sinkLinkMap.items():
+            self.model.constraints.add(getattr(self.model, sink) >= 0)
+        ## Any excess Link OUT that is not consumed by a Link IN must go to a Sink
+        ## Sink = sum(sink_in_links) - sum(source_out_links)
+        for item, out_links in self.itemOutLinks.items():
+            sink = f"O_{item}"
+            source = f"I_{item}"
+            if hasattr(self.model, sink):
+                self.model.constraints.add(getattr(self.model, sink) == sum(getattr(self.model, sink_link) for sink_link in self.sinkLinkMap[sink]) - sum(getattr(self.model, source_link) for source_link in self.sourceLinkMap[source]))
 
         # Target
-        self.model.constraints.add(self.model.M1 >= 1000)
+        self.model.constraints.add(getattr(self.model, "O_hydrogen sulfide") >= 1000)
 
         # Objective
         self.model.objective = pyomo.Objective(
@@ -63,15 +76,25 @@ class Solver():
             sense = pyomo.minimize,
         )
 
+        # Print all constraints
+        self.model.pprint()
+
         # Result
         result = self.solver.solve(self.model)
         print(result)
+        
+        # Print the results
+        for v in self.model.component_objects(pyomo.Var, active=True):
+            varobject = getattr(self.model, str(v))
+            for index in varobject:
+                print(f"{v} {index} = {varobject[index].value}")
 
 
     def add_recipe(self, recipe: Recipe) -> int:
         # Add machine variable
         machine_name = f"M{self.currMachineNum}"
         setattr(self.model, machine_name, pyomo.Var(domain=pyomo.NonNegativeReals))
+        self.model.constraints.add(getattr(self.model, machine_name) >= 0)
         self.currMachineNum += 1
         self.machineNames.append(machine_name)
 
@@ -97,6 +120,8 @@ class Solver():
 
             # Relate all links to their source
             self.sourceLinkMap[source_name].append(link_in)
+            self.itemInLinks[input_name].append(link_in)
+            self.itemOutLinks[input_name].append(link_out)
 
             # Add machine constraints for inputs
             ## The items coming from a link must match the number of machines * the recipe quantity.
@@ -107,7 +132,7 @@ class Solver():
             # Add sink if it does not exist yet
             sink_name = f"O_{output_name}"
             if not hasattr(self.model, sink_name):
-                setattr(self.model, sink_name, pyomo.Var(domain=pyomo.Reals))
+                setattr(self.model, sink_name, pyomo.Var(domain=pyomo.NonNegativeReals))
 
             # Name the link variables
             link_in = f"L{self.currLinkNum}_IN_{output_name}"
@@ -123,7 +148,9 @@ class Solver():
             self.model.constraints.add(-1 * getattr(self.model, link_in) + getattr(self.model, link_out) == 0)
 
             # Relate all links to their sink
-            self.sinkLinkMap[source_name].append(link_in)
+            self.sinkLinkMap[sink_name].append(link_in)
+            self.itemInLinks[output_name].append(link_in)
+            self.itemOutLinks[output_name].append(link_out)
 
             # Add machine constraints for inputs
             ## The items going out into a link must match the number of machines * the recipe quantity.
