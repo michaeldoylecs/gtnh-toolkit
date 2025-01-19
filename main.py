@@ -7,28 +7,6 @@ class Recipe(NamedTuple):
     outputs: list[tuple[str, int]]
     duration: int
 
-recipe_hydrogen = Recipe(
-    inputs = [
-        ("water", 500)
-    ],
-    outputs = [
-        ("oxygen", 500),
-        ("hydrogen", 1000)
-    ],
-    duration = 1000,
-)
-
-recipe_hydrogen_sulfude = Recipe(
-    inputs = [
-        ("sulfur", 1),
-        ("hydrogen", 2000)
-    ],
-    outputs = [
-        ("hydrogen sulfide", 1000)
-    ],
-    duration = 60,
-)
-
 class Solver():
 
     def __init__(self, solver = pyomo.SolverFactory('cbc'), model = pyomo.ConcreteModel()):
@@ -158,6 +136,28 @@ class Solver():
 
 
 def main():
+    recipe_hydrogen = Recipe(
+        inputs = [
+            ("water", 500)
+        ],
+        outputs = [
+            ("oxygen", 500),
+            ("hydrogen", 1000)
+        ],
+        duration = 1000,
+    )
+
+    recipe_hydrogen_sulfude = Recipe(
+        inputs = [
+            ("sulfur", 1),
+            ("hydrogen", 2000)
+        ],
+        outputs = [
+            ("hydrogen sulfide", 1000)
+        ],
+        duration = 60,
+    )
+
     solver = Solver()
     solver.add_recipe(recipe_hydrogen)
     solver.add_recipe(recipe_hydrogen_sulfude)
