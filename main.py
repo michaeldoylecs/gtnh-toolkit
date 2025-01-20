@@ -84,8 +84,8 @@ class Solver():
                 setattr(self.model, source_name, pyomo.Var(domain=pyomo.Reals))
 
             # Name the link variables
-            link_in = f"L{self.currLinkNum}_IN_{input_name}"
-            link_out = f"L{self.currLinkNum}_OUT_{input_name}"
+            link_in = f"L{self.currLinkNum}_IN_{input_name}_TO_{machine_name}"
+            link_out = f"L{self.currLinkNum}_OUT_{input_name}_TO_{machine_name}"
             self.currLinkNum += 1
 
             # Add the link variables
@@ -113,8 +113,8 @@ class Solver():
                 setattr(self.model, sink_name, pyomo.Var(domain=pyomo.NonNegativeReals))
 
             # Name the link variables
-            link_in = f"L{self.currLinkNum}_IN_{output_name}"
-            link_out = f"L{self.currLinkNum}_OUT_{output_name}"
+            link_in = f"L{self.currLinkNum}_IN_{output_name}_FROM_{machine_name}"
+            link_out = f"L{self.currLinkNum}_OUT_{output_name}_FROM_{machine_name}"
             self.currLinkNum += 1
 
             # Add the link variables
@@ -136,6 +136,7 @@ class Solver():
 
 
 def main():
+    # Dummy data
     recipe_hydrogen = Recipe(
         inputs = [
             ("water", 500)
@@ -146,7 +147,6 @@ def main():
         ],
         duration = 1000,
     )
-
     recipe_hydrogen_sulfude = Recipe(
         inputs = [
             ("sulfur", 1),
