@@ -1,10 +1,18 @@
 from collections import defaultdict
-from typing import NamedTuple
-import pyomo.environ as pyomo
+from dataclasses import dataclass
+import pyomo.environ as pyomo # type: ignore
 
-class Recipe(NamedTuple):
-    inputs: list[tuple[str, int]]
-    outputs: list[tuple[str, int]]
+
+class ItemName(str):
+    def __new__(cls, value):
+        # ItemNames must not contain spaces. Spaces must be replaced with underscores.
+        value = value.replace(" ", "_")
+        return str.__new__(cls, value)
+
+@dataclass
+class Recipe:
+    inputs: list[tuple[ItemName, int]]
+    outputs: list[tuple[ItemName, int]]
     duration: int
 
 class Solver():
@@ -23,7 +31,7 @@ class Solver():
         self.model.constraints = pyomo.ConstraintList()
 
 
-    def solve(self):
+    def solve(self) -> list[tuple[str, float]]:
         # TODO: Add sanity checks (is target set, is objective set, etc)
 
         # Add source -> link constraints
@@ -46,7 +54,7 @@ class Solver():
                 self.model.constraints.add(getattr(self.model, sink) == sum(getattr(self.model, sink_link) for sink_link in self.sinkLinkMap[sink]) - sum(getattr(self.model, source_link) for source_link in self.sourceLinkMap[source]))
 
         # Target
-        self.model.constraints.add(getattr(self.model, "O_hydrogen sulfide") >= 1000)
+        self.model.constraints.add(getattr(self.model, "O_hydrogen_sulfide") >= 1000)
 
         # Objective
         self.model.objective = pyomo.Objective(
@@ -64,11 +72,16 @@ class Solver():
         # Print the results
         for v in self.model.component_objects(pyomo.Var, active=True):
             varobject = getattr(self.model, str(v))
-            for index in varobject:
-                print(f"{v} {index} = {varobject[index].value}")
+            print(f"{v} = {varobject.value}")
+
+        results = []
+        for v in self.model.component_objects(pyomo.Var, active=True):
+            varobject = getattr(self.model, str(v))
+            results.append((str(v), varobject.value))
+        return results
 
 
-    def add_recipe(self, recipe: Recipe) -> int:
+    def add_recipe(self, recipe: Recipe):
         # Add machine variable
         machine_name = f"M{self.currMachineNum}"
         setattr(self.model, machine_name, pyomo.Var(domain=pyomo.NonNegativeReals))
@@ -135,25 +148,28 @@ class Solver():
             self.model.constraints.add(getattr(self.model, machine_name) * output_quantity - getattr(self.model, link_out) == 0)
 
 
+def draw():
+    pass
+
 def main():
     # Dummy data
     recipe_hydrogen = Recipe(
         inputs = [
-            ("water", 500)
+            (ItemName("water"), 500)
         ],
         outputs = [
-            ("oxygen", 500),
-            ("hydrogen", 1000)
+            (ItemName("oxygen"), 500),
+            (ItemName("hydrogen"), 1000)
         ],
         duration = 1000,
     )
     recipe_hydrogen_sulfude = Recipe(
         inputs = [
-            ("sulfur", 1),
-            ("hydrogen", 2000)
+            (ItemName("sulfur"), 1),
+            (ItemName("hydrogen"), 2000)
         ],
         outputs = [
-            ("hydrogen sulfide", 1000)
+            (ItemName("hydrogen sulfide"), 1000)
         ],
         duration = 60,
     )
