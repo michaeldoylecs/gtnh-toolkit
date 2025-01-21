@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 import pyomo.environ as pyomo # type: ignore
+from pyomo.opt import SolverResults # type: ignore
 
 
 class ItemName(str):
@@ -15,141 +16,133 @@ class Recipe:
     outputs: list[tuple[ItemName, int]]
     duration: int
 
-class Solver():
+@dataclass
+class TargetRate:
+    item: ItemName
+    quantity: float
 
-    def __init__(self, solver = pyomo.SolverFactory('cbc'), model = pyomo.ConcreteModel()):
-        self.solver = solver
-        self.model = model
-        self.currLinkNum = 0
-        self.currMachineNum = 0
-        self.machineNames = []
-        self.itemInLinks = defaultdict(list)
-        self.itemOutLinks = defaultdict(list)
-        self.sourceLinkMap = defaultdict(list)
-        self.sinkLinkMap = defaultdict(list)
+def solve(
+        recipes: list[Recipe],
+        target: TargetRate,
+        solver = pyomo.SolverFactory('cbc'),
+        model = pyomo.ConcreteModel()
+        ) -> tuple[pyomo.Model, SolverResults]:
+    machine_index = 0
+    machines: list[str] = [] 
 
-        self.model.constraints = pyomo.ConstraintList()
+    item_out_links: dict[ItemName, list[str]] = defaultdict(list)
+    item_in_links: dict[ItemName, list[str]] = defaultdict(list)
 
+    for recipe in recipes:
+        machine_name = f'M{machine_index}'
+        machine_index += 1
+        machines.append(machine_name)
 
-    def solve(self) -> list[tuple[str, float]]:
-        # TODO: Add sanity checks (is target set, is objective set, etc)
+        # Make machine variable and empty constraint list
+        setattr(model, machine_name, pyomo.Var(domain=pyomo.NonNegativeReals))
+        setattr(model, f'{machine_name}_constraints', pyomo.ConstraintList())
+        machine_variable = getattr(model, machine_name)
 
-        # Add source -> link constraints
-        for source, links in self.sourceLinkMap.items():
-            # Sources must be negative or 0.
-            self.model.constraints.add(getattr(self.model, source) <= 0)
-            # Sources must equal the sum of their outgoing links.
-            self.model.constraints.add(getattr(self.model, source) + sum(getattr(self.model, link) for link in links) == 0)
-        
-        # Add Link -> Sink constraints
-        ## Sinks must be positive or 0
-        for sink, _ in self.sinkLinkMap.items():
-            self.model.constraints.add(getattr(self.model, sink) >= 0)
-        ## Any excess Link OUT that is not consumed by a Link IN must go to a Sink
-        ## Sink = sum(sink_in_links) - sum(source_out_links)
-        for item, out_links in self.itemOutLinks.items():
-            sink = f"O_{item}"
-            source = f"I_{item}"
-            if hasattr(self.model, sink):
-                self.model.constraints.add(getattr(self.model, sink) == sum(getattr(self.model, sink_link) for sink_link in self.sinkLinkMap[sink]) - sum(getattr(self.model, source_link) for source_link in self.sourceLinkMap[source]))
+        # Make input variables and constraints
+        for item, quantity in recipe.inputs:
+            item_in_link = f'{machine_name}_IN_{item}'
+            setattr(model, item_in_link, pyomo.Var(domain=pyomo.NonNegativeReals))
+            item_in_links[item].append(item_in_link)
+            input_variable = getattr(model, item_in_link)
+            getattr(model, f'{machine_name}_constraints').add(machine_variable == input_variable / quantity)
 
-        # Target
-        self.model.constraints.add(getattr(self.model, "O_hydrogen_sulfide") >= 1000)
+        # Make output variables and constraints
+        for item, quantity in recipe.outputs:
+            item_out_link = f'{machine_name}_OUT_{item}'
+            setattr(model, item_out_link, pyomo.Var(domain=pyomo.NonNegativeReals))
+            item_out_links[item].append(item_out_link)
+            output_variable = getattr(model, item_out_link)
+            getattr(model, f'{machine_name}_constraints').add(machine_variable == output_variable / quantity)
 
-        # Objective
-        self.model.objective = pyomo.Objective(
-            rule = lambda model: sum([getattr(model, machine_name) for machine_name in self.machineNames]),
-            sense = pyomo.minimize,
-        )
+        # Add recipe constraints between inputs, outputs
+        input_output_pairs = [(i, o) for i in recipe.inputs for o in recipe.outputs]
+        for (in_item, in_quantity), (out_item, out_quantity) in input_output_pairs:
+            in_variable = getattr(model, f'{machine_name}_IN_{in_item}')
+            out_variable = getattr(model, f'{machine_name}_OUT_{out_item}')
+            getattr(model, f'{machine_name}_constraints').add((out_variable / out_quantity) - (in_variable / in_quantity) == 0)
+    
+    # Make sources for each IN link item
+    item_source_map: dict[ItemName, str] = dict()
+    model.SOURCE_CONSTRAINTS = pyomo.ConstraintList()
+    for item in item_in_links.keys():
+        source_name = f'SOURCE_{item}'
+        source_out_name = f'SOURCE_OUT_{item}'
+        setattr(model, source_name, pyomo.Var(domain=pyomo.Reals))
+        setattr(model, source_out_name, pyomo.Var(domain=pyomo.NonNegativeReals))
 
-        # Print all constraints
-        self.model.pprint()
+        # Source value should be the negative of its outgoing quantity
+        source_variable = getattr(model, source_name)
+        source_out_variable = getattr(model, source_out_name)
+        model.SOURCE_CONSTRAINTS.add(source_variable - source_out_variable == 0)
 
-        # Result
-        result = self.solver.solve(self.model)
-        print(result)
-        
-        # Print the results
-        for v in self.model.component_objects(pyomo.Var, active=True):
-            varobject = getattr(self.model, str(v))
-            print(f"{v} = {varobject.value}")
+        # Source values must be less than or equal to 0
+        model.SOURCE_CONSTRAINTS.add(source_variable >= 0)
 
-        results = []
-        for v in self.model.component_objects(pyomo.Var, active=True):
-            varobject = getattr(self.model, str(v))
-            results.append((str(v), varobject.value))
-        return results
+        item_source_map[item] = source_name
+        item_out_links[item].append(source_out_name)
 
+    # Make sinks for each OUT link item
+    item_sink_map: dict[ItemName, str] = dict()
+    model.SINK_CONSTRAINTS = pyomo.ConstraintList()
+    for item in item_out_links.keys():
+        sink_name = f'SINK_{item}'
+        sink_in_name = f'SINK_IN_{item}'
+        setattr(model, sink_name, pyomo.Var(domain=pyomo.NonNegativeReals))
+        setattr(model, sink_in_name, pyomo.Var(domain=pyomo.NonNegativeReals))
 
-    def add_recipe(self, recipe: Recipe):
-        # Add machine variable
-        machine_name = f"M{self.currMachineNum}"
-        setattr(self.model, machine_name, pyomo.Var(domain=pyomo.NonNegativeReals))
-        self.model.constraints.add(getattr(self.model, machine_name) >= 0)
-        self.currMachineNum += 1
-        self.machineNames.append(machine_name)
+        # Sink value should be equal to its incoming quantity
+        sink_variable = getattr(model, sink_name)
+        sink_in_variable = getattr(model, sink_in_name)
+        model.SINK_CONSTRAINTS.add(sink_variable == sink_in_variable)
 
-        # Add variables and constraints for each input
-        for input_name, input_quantity in recipe.inputs:
-            # Add source if it does not exist yet
-            source_name = f"I_{input_name}"
-            if not hasattr(self.model, source_name):
-                setattr(self.model, source_name, pyomo.Var(domain=pyomo.Reals))
+        # Sink values must be greater than or equal to 0
+        model.SINK_CONSTRAINTS.add(sink_variable >= 0)
 
-            # Name the link variables
-            link_in = f"L{self.currLinkNum}_IN_{input_name}_TO_{machine_name}"
-            link_out = f"L{self.currLinkNum}_OUT_{input_name}_TO_{machine_name}"
-            self.currLinkNum += 1
+        item_sink_map[item] = sink_name
+        item_in_links[item].append(sink_name)
+    
+    # Add links between all OUTs and INs of the same item
+    incoming_link_map: dict[str, list[str]] = defaultdict(list)
+    outgoing_link_map: dict[str, list[str]] = defaultdict(list)
+    for item in item_out_links.keys():
+        output_input_pairs = [(o, i) for i in item_in_links[item] for o in item_out_links[item]]
+        for out_link, in_link in output_input_pairs:
+            link_name = f'{out_link}_TO_{in_link}'
+            setattr(model, link_name, pyomo.Var(domain=pyomo.NonNegativeReals))
+            incoming_link_map[in_link].append(link_name)
+            outgoing_link_map[out_link].append(link_name)
 
-            # Add the link variables
-            setattr(self.model, link_in, pyomo.Var(domain=pyomo.NonNegativeReals))
-            setattr(self.model, link_out, pyomo.Var(domain=pyomo.NonNegativeReals))
+            out_variable = getattr(model, out_link)
+            in_variable = getattr(model, in_link)
+    
+    # In links must sum to their connecting edges
+    model.IN_LINK_EDGE_CONSTRAINTS = pyomo.ConstraintList()
+    for in_link, incoming_edges in incoming_link_map.items():
+        model.IN_LINK_EDGE_CONSTRAINTS.add(getattr(model, in_link) == sum([getattr(model, edge) for edge in incoming_edges]))
 
-            # Add the link constraints
-            # ## What goes in must come out
-            self.model.constraints.add(-1 * getattr(self.model, link_in) + getattr(self.model, link_out) == 0)
+    # Out links must sum to their connecting edges
+    model.OUT_LINK_EDGE_CONSTRAINTS = pyomo.ConstraintList()
+    for out_link, outgoing_edges in outgoing_link_map.items():
+        model.OUT_LINK_EDGE_CONSTRAINTS.add(getattr(model, out_link) == sum([getattr(model, edge) for edge in outgoing_edges]))
 
-            # Relate all links to their source
-            self.sourceLinkMap[source_name].append(link_in)
-            self.itemInLinks[input_name].append(link_in)
-            self.itemOutLinks[input_name].append(link_out)
+    # Add target
+    model.target = pyomo.Constraint(rule=lambda model: getattr(model, f'SINK_{target.item}') >= target.quantity)
 
-            # Add machine constraints for inputs
-            ## The items coming from a link must match the number of machines * the recipe quantity.
-            self.model.constraints.add(getattr(self.model, machine_name) * input_quantity - getattr(self.model, link_out) == 0)
+    # Add objective
+    sources = item_source_map.values()
+    model.objective = pyomo.Objective(
+        rule = lambda model: sum([getattr(model, machine) for machine in machines]) + sum([getattr(model, source) for source in sources]),
+        sense = pyomo.minimize,
+    )
 
-        # Add variables and constraints for each output
-        for output_name, output_quantity in recipe.outputs:
-            # Add sink if it does not exist yet
-            sink_name = f"O_{output_name}"
-            if not hasattr(self.model, sink_name):
-                setattr(self.model, sink_name, pyomo.Var(domain=pyomo.NonNegativeReals))
-
-            # Name the link variables
-            link_in = f"L{self.currLinkNum}_IN_{output_name}_FROM_{machine_name}"
-            link_out = f"L{self.currLinkNum}_OUT_{output_name}_FROM_{machine_name}"
-            self.currLinkNum += 1
-
-            # Add the link variables
-            setattr(self.model, link_in, pyomo.Var(domain=pyomo.NonNegativeReals))
-            setattr(self.model, link_out, pyomo.Var(domain=pyomo.NonNegativeReals))
-
-            # Add the link constraints
-            ## What goes in must come out
-            self.model.constraints.add(-1 * getattr(self.model, link_in) + getattr(self.model, link_out) == 0)
-
-            # Relate all links to their sink
-            self.sinkLinkMap[sink_name].append(link_in)
-            self.itemInLinks[output_name].append(link_in)
-            self.itemOutLinks[output_name].append(link_out)
-
-            # Add machine constraints for inputs
-            ## The items going out into a link must match the number of machines * the recipe quantity.
-            self.model.constraints.add(getattr(self.model, machine_name) * output_quantity - getattr(self.model, link_out) == 0)
-
-
-def draw():
-    pass
+    # Solve
+    result = solver.solve(model)
+    return model, result
 
 def main():
     # Dummy data
@@ -174,10 +167,19 @@ def main():
         duration = 60,
     )
 
-    solver = Solver()
-    solver.add_recipe(recipe_hydrogen)
-    solver.add_recipe(recipe_hydrogen_sulfude)
-    solver.solve()
+    target: TargetRate = TargetRate(
+        item = ItemName("hydrogen sulfide"),
+        quantity = 5000,
+    )
+
+    model, results = solve([recipe_hydrogen, recipe_hydrogen_sulfude], target)
+
+    # Print the results
+    model.pprint()
+    print(results)
+    for v in model.component_objects(pyomo.Var, active=True):
+        varobject = getattr(model, str(v))
+        print(f"{v} = {varobject.value}")
 
 if __name__ == "__main__":
     main()
