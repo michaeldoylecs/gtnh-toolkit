@@ -78,10 +78,10 @@ def solve(
         # Source value should be the negative of its outgoing quantity
         source_variable = getattr(model, source_name)
         source_out_variable = getattr(model, source_out_name)
-        model.SOURCE_CONSTRAINTS.add(source_variable - source_out_variable == 0)
+        model.SOURCE_CONSTRAINTS.add(source_variable + source_out_variable == 0)
 
         # Source values must be less than or equal to 0
-        model.SOURCE_CONSTRAINTS.add(source_variable >= 0)
+        model.SOURCE_CONSTRAINTS.add(source_variable <= 0)
 
         item_source_map[item] = source_name
         item_out_links[item].append(source_out_name)
@@ -136,7 +136,7 @@ def solve(
     # Add objective
     sources = item_source_map.values()
     model.objective = pyomo.Objective(
-        rule = lambda model: sum([getattr(model, machine) for machine in machines]) + sum([getattr(model, source) for source in sources]),
+        rule = lambda model: sum([getattr(model, machine) for machine in machines]) - sum([getattr(model, source) for source in sources]),
         sense = pyomo.minimize,
     )
 
