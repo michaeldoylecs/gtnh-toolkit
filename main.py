@@ -109,7 +109,7 @@ def solve(
         model.SINK_CONSTRAINTS.add(sink_variable >= 0)
 
         item_sink_map[item] = sink_name
-        item_in_links[item].append(sink_name)
+        item_in_links[item].append(sink_in_name)
     
     # Add links between all OUTs and INs of the same item
     incoming_link_map: dict[str, list[str]] = defaultdict(list)
@@ -161,33 +161,45 @@ class ItemRate:
 class Node:
     __metaclass__ = abc.ABCMeta
     id: str
-    data: dict[str, tuple[type, Any]]
 
-    def __init__(self, id: str, **kwargs):
+    def __init__(self, id: str):
         self.id = id
-        self.data = {}
-        for key, value in kwargs.items():
-            self.data[key] = (type(value), value)
-
-    @abc.abstractmethod
-    def type(self) -> str:
-        raise NotImplementedError()
 
 class SourceNode(Node):
-    def type(self) -> str:
-        return 'source'
+    item: str
+    quantity: float
+
+    def __init__(self, id: str, item: str, quantity: float):
+        self.item = item
+        self.quantity = quantity
+        super().__init__(id)
 
 class SinkNode(Node):
-    def type(self) -> str:
-        return 'sink'
+    item: str
+    quantity: float
+
+    def __init__(self, id: str, item: str, quantity: float):
+        self.item = item
+        self.quantity = quantity
+        super().__init__(id)
 
 class MachineNode(Node):
-    def type(self) -> str:
-        return 'machine'
+    machine_name: str
+    quantity: float
+
+    def __init__(self, id: str, machine_name: str, quantity: float):
+        self.machine_name = machine_name
+        self.quantity = quantity
+        super().__init__(id)
     
 class ItemNode(Node):
-    def type(self) -> str:
-        return 'item'
+    item: str
+    quantity: float
+
+    def __init__(self, id: str, item: str, quantity: float):
+        self.item = item
+        self.quantity = quantity
+        super().__init__(id)
 
 @dataclass
 class DirectedEdge:
@@ -286,10 +298,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         match = source_pattern.match(source)
         if match:
             source_name, = match.groups()
-            source_node = SourceNode(id = source, **{
-                'item': Item(id = ItemName(source_name)),
-                'rate': quantity,
-            })
+            source_node = SourceNode(id = source, item = source_name, quantity = quantity)
             source_nodes[source_name] = source_node
             link_name_to_node_map[source] = source_node
             graph.nodes.append(source_node)
@@ -299,13 +308,13 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         if math.isclose(quantity, 0.0):
             continue
 
-        source_out_node = ItemNode(id = source_out, )
+        item_name = str.replace(source_out, 'SOURCE_OUT_', '')
+        source_out_node = ItemNode(id = source_out, item = item_name, quantity = quantity)
         link_name_to_node_map[source_out] = source_out_node
         graph.nodes.append(source_out_node)
 
         # Create edge between source node and source OUT node
         source = str.replace(source_out, '_OUT', '')
-        item_name = str.replace(source_out, 'SOURCE_OUT_', '')
         graph.edges.append(DirectedEdge(
             start = link_name_to_node_map[source],
             end = link_name_to_node_map[source_out],
@@ -322,10 +331,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         match = sink_pattern.match(sink)
         if match:
             sink_name, = match.groups()
-            sink_node = SinkNode(id = sink, **{
-                'item': Item(id = ItemName(sink_name)),
-                'rate': quantity,
-            })
+            sink_node = SinkNode(id = sink, item = sink_name, quantity = quantity)
             sink_nodes[sink_name] = sink_node
             link_name_to_node_map[sink] = sink_node
             graph.nodes.append(sink_node)
@@ -335,13 +341,13 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         if math.isclose(quantity, 0.0):
             continue
 
-        sink_in_node = ItemNode(id = sink_in)
+        item_name = str.replace(sink_in, 'SINK_IN_', '')
+        sink_in_node = ItemNode(id = sink_in, item = item_name, quantity = quantity)
         link_name_to_node_map[sink_in] = sink_in_node
         graph.nodes.append(sink_in_node)
 
         # Create edge between sink IN node and sink node
         sink = str.replace(sink_in, '_IN', '')
-        item_name = str.replace(sink_in, 'SINK_IN_', '')
         graph.edges.append(DirectedEdge(
             start = link_name_to_node_map[sink_in],
             end = link_name_to_node_map[sink],
@@ -355,10 +361,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         match = machine_pattern.match(machine)
         if match:
             machine_name, = match.groups()
-            machine_node = MachineNode(id = machine, **{
-                'item': Item(id = ItemName(machine_name)),
-                'quantity': quantity,
-            })
+            machine_node = MachineNode(id = machine, machine_name = machine_name, quantity = quantity)
             machine_nodes[machine_name] = machine_node
             link_name_to_node_map[machine] = machine_node
             graph.nodes.append(machine_node)
@@ -371,10 +374,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         match = machine_input_pattern.match(input_node_name)
         if match:
             _, item_name = match.groups()
-            input_node = ItemNode(id = input_node_name, **{
-                'item': Item(id = ItemName(item_name)),
-                'quantity': quantity,
-            })
+            input_node = ItemNode(id = input_node_name, item = item_name, quantity = quantity)
             link_name_to_node_map[input_node_name] = input_node
             graph.nodes.append(input_node)
 
@@ -394,10 +394,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         match = machine_output_pattern.match(output_node_name)
         if match:
             _, item_name, = match.groups()
-            output_node = ItemNode(id = output_node_name, **{
-                'item': Item(id = ItemName(item_name)),
-                'quantity': quantity,
-            })
+            output_node = ItemNode(id = output_node_name, item = item_name, quantity = quantity)
             link_name_to_node_map[output_node_name] = output_node
             graph.nodes.append(output_node)
 
@@ -417,13 +414,25 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
 
         start = link_name_to_node_map[link["start"]]
         end = link_name_to_node_map[link["end"]]
+        print(f'{start.id} -> {end.id}')
 
-        graph.edges.append(DirectedEdge(
-            start = start,
-            end = end,
-            item = end.data['item'][1],
-            quantity = value
-        ))
+        item = None
+        if isinstance(end, SourceNode):
+            item = end.item
+        elif isinstance(end, SinkNode):
+            item = end.item
+        elif isinstance(end, ItemNode):
+            item = end.item
+        else:
+            raise ValueError("Invalid node type")
+
+        if type(end) in [SourceNode, SinkNode, ItemNode]:
+            graph.edges.append(DirectedEdge(
+                start = start,
+                end = end,
+                item = Item(id = ItemName(item)),
+                quantity = value
+            ))
 
     return graph
 
@@ -437,21 +446,21 @@ def draw(graph: SolutionGraph):
 
     # Add the nodes
     for node in graph.nodes:
-        if node.type() == 'source':
+        if type(node) is SourceNode:
             with dot.subgraph(name='cluster_sources') as subgraph:
                 subgraph.attr(rank='source', color='lightgrey', style='filled')
-                subgraph.node(node.id, f'{node.data['item'][1].id}\n{node.data['rate'][1]}')
+                subgraph.node(node.id, f'{node.item}\n{node.quantity}')
 
-        if node.type() == 'sink':
+        if type(node) is SinkNode:
             with dot.subgraph(name='cluster_sinks') as subgraph:
                 subgraph.attr(rank="sink", color='lightgrey', style='filled')
-                subgraph.node(node.id, f'{node.data['item'][1].id}\n{node.data['rate'][1]}')
+                subgraph.node(node.id, f'{node.item}\n{node.quantity}')
         
-        if node.type() == 'machine':
+        if type(node) is MachineNode:
             with dot.subgraph(name='regular') as subgraph:
-                dot.node(node.id, f'{node.id}={node.data['quantity'][1]}')
+                dot.node(node.id, f'{node.machine_name}\n{node.quantity}')
 
-        if node.type() == 'item':
+        if type(node) is ItemNode:
             with dot.subgraph(name='regular') as subgraph:
                 subgraph.node(node.id, node.id, **{
                     'width': '0',
