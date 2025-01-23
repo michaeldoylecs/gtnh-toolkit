@@ -121,9 +121,6 @@ def solve(
             setattr(model, link_name, pyomo.Var(domain=pyomo.NonNegativeReals))
             incoming_link_map[in_link].append(link_name)
             outgoing_link_map[out_link].append(link_name)
-
-            out_variable = getattr(model, out_link)
-            in_variable = getattr(model, in_link)
     
     # In links must sum to their connecting edges
     model.IN_LINK_EDGE_CONSTRAINTS = pyomo.ConstraintList()
@@ -414,11 +411,10 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
             graph.nodes.append(input_node)
 
             # Create edge between machine and machine input node
-            graph.edges.append(ItemDirectedEdge(
+            graph.edges.append(MachineInputDirectedEdge(
                 start = link_name_to_node_map[input_node_name],
                 end = link_name_to_node_map[machine],
-                item = Item(id = ItemName(item_name)),
-                quantity = quantity,
+                machine_id = machine,
             ))
 
     # Make machine OUT nodes
@@ -434,11 +430,10 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
             graph.nodes.append(output_node)
 
             # Create edge between machine and machine output node
-            graph.edges.append(ItemDirectedEdge(
+            graph.edges.append(MachineOutputDirectedEdge(
                 start = link_name_to_node_map[machine],
                 end = link_name_to_node_map[output_node_name],
-                item = Item(id = ItemName(item_name)),
-                quantity = quantity,
+                machine_id = machine,
             ))
 
     # Make edges
@@ -465,7 +460,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         else:
             raise ValueError("Invalid node type")
 
-        if type(end) in [SourceNode, SinkNode, ItemNode]:
+        if type(end) in [SourceNode, SinkNode, ItemNode, MachineInputNode]:
             graph.edges.append(ItemDirectedEdge(
                 start = start,
                 end = end,
@@ -513,7 +508,9 @@ def draw(graph: SolutionGraph):
 
         elif type(node) is ItemNode:
             with dot.subgraph(name='regular') as subgraph:
-                subgraph.node(node.id, node.id, **{
+                subgraph.node(node.id, **{
+                    'style': 'invis',
+                    'fixedsize': 'true',
                     'width': '0',
                     'height': '0',
                 })
