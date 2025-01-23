@@ -191,6 +191,28 @@ class MachineNode(Node):
         self.machine_name = machine_name
         self.quantity = quantity
         super().__init__(id)
+
+class MachineInputNode(Node):
+    machine_id: str
+    item: str
+    quantity: float
+
+    def __init__(self, id: str, machine_id: str, item: str, quantity: float):
+        self.machine_id = machine_id
+        self.item = item
+        self.quantity = quantity
+        super().__init__(id)
+
+class MachineOutputNode(Node):
+    machine_id: str
+    item: str
+    quantity: float
+
+    def __init__(self, id: str, machine_id: str, item: str, quantity: float):
+        self.machine_id = machine_id
+        self.item = item
+        self.quantity = quantity
+        super().__init__(id)
     
 class ItemNode(Node):
     item: str
@@ -205,8 +227,21 @@ class ItemNode(Node):
 class DirectedEdge:
     start: Node
     end: Node
+
+@dataclass
+class ItemDirectedEdge(DirectedEdge):
     item: Item
     quantity: float
+
+@dataclass
+class MachineInputDirectedEdge(DirectedEdge):
+    '''Edge subclass to differentiate machine input edges'''
+    machine_id: str
+
+@dataclass
+class MachineOutputDirectedEdge(DirectedEdge):
+    '''Edge subclass to differentiate machine output edges'''
+    machine_id: str
 
 @dataclass
 class SolutionGraph:
@@ -315,7 +350,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
 
         # Create edge between source node and source OUT node
         source = str.replace(source_out, '_OUT', '')
-        graph.edges.append(DirectedEdge(
+        graph.edges.append(ItemDirectedEdge(
             start = link_name_to_node_map[source],
             end = link_name_to_node_map[source_out],
             item = Item(id = ItemName(item_name)),
@@ -348,7 +383,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
 
         # Create edge between sink IN node and sink node
         sink = str.replace(sink_in, '_IN', '')
-        graph.edges.append(DirectedEdge(
+        graph.edges.append(ItemDirectedEdge(
             start = link_name_to_node_map[sink_in],
             end = link_name_to_node_map[sink],
             item = Item(id = ItemName(item_name)),
@@ -374,12 +409,12 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         match = machine_input_pattern.match(input_node_name)
         if match:
             _, item_name = match.groups()
-            input_node = ItemNode(id = input_node_name, item = item_name, quantity = quantity)
+            input_node = MachineInputNode(id = input_node_name, machine_id = machine, item = item_name, quantity = quantity)
             link_name_to_node_map[input_node_name] = input_node
             graph.nodes.append(input_node)
 
             # Create edge between machine and machine input node
-            graph.edges.append(DirectedEdge(
+            graph.edges.append(ItemDirectedEdge(
                 start = link_name_to_node_map[input_node_name],
                 end = link_name_to_node_map[machine],
                 item = Item(id = ItemName(item_name)),
@@ -394,12 +429,12 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         match = machine_output_pattern.match(output_node_name)
         if match:
             _, item_name, = match.groups()
-            output_node = ItemNode(id = output_node_name, item = item_name, quantity = quantity)
+            output_node = MachineOutputNode(id = output_node_name, machine_id = machine,  item = item_name, quantity = quantity)
             link_name_to_node_map[output_node_name] = output_node
             graph.nodes.append(output_node)
 
             # Create edge between machine and machine output node
-            graph.edges.append(DirectedEdge(
+            graph.edges.append(ItemDirectedEdge(
                 start = link_name_to_node_map[machine],
                 end = link_name_to_node_map[output_node_name],
                 item = Item(id = ItemName(item_name)),
@@ -423,11 +458,15 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
             item = end.item
         elif isinstance(end, ItemNode):
             item = end.item
+        elif isinstance(end, MachineInputNode):
+            item = end.item
+        elif isinstance(end, MachineOutputNode):
+            item = end.item
         else:
             raise ValueError("Invalid node type")
 
         if type(end) in [SourceNode, SinkNode, ItemNode]:
-            graph.edges.append(DirectedEdge(
+            graph.edges.append(ItemDirectedEdge(
                 start = start,
                 end = end,
                 item = Item(id = ItemName(item)),
@@ -451,16 +490,28 @@ def draw(graph: SolutionGraph):
                 subgraph.attr(rank='source', color='lightgrey', style='filled')
                 subgraph.node(node.id, f'{node.item}\n{node.quantity}')
 
-        if type(node) is SinkNode:
+        elif type(node) is SinkNode:
             with dot.subgraph(name='cluster_sinks') as subgraph:
                 subgraph.attr(rank="sink", color='lightgrey', style='filled')
                 subgraph.node(node.id, f'{node.item}\n{node.quantity}')
-        
-        if type(node) is MachineNode:
-            with dot.subgraph(name='regular') as subgraph:
-                dot.node(node.id, f'{node.machine_name}\n{node.quantity}')
 
-        if type(node) is ItemNode:
+        elif type(node) is MachineNode:
+            with dot.subgraph(name=f'cluster_{node.id}') as subgraph:
+                subgraph.node(node.id, f'{node.machine_name}\n{node.quantity}')
+        
+        elif type(node) is MachineInputNode:
+            with dot.subgraph(name=f'cluster_{node.machine_id}') as subgraph:
+                subgraph.node(node.id, node.item, **{
+                    'rank': 'source'
+                })
+
+        elif type(node) is MachineOutputNode:
+            with dot.subgraph(name=f'cluster_{node.machine_id}') as subgraph:
+                subgraph.node(node.id, node.item, **{
+                    'rank': 'sink'
+                })
+
+        elif type(node) is ItemNode:
             with dot.subgraph(name='regular') as subgraph:
                 subgraph.node(node.id, node.id, **{
                     'width': '0',
@@ -469,7 +520,20 @@ def draw(graph: SolutionGraph):
 
     # Add the edges
     for edge in graph.edges:
-        dot.edge(edge.start.id, edge.end.id, label = f'({edge.quantity})')
+        if type(edge) is ItemDirectedEdge:
+            dot.edge(edge.start.id, edge.end.id, label = f'({edge.quantity})')
+            
+        elif type(edge) is MachineInputDirectedEdge:
+            with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
+                subgraph.edge(edge.start.id, edge.end.id, '', **{
+                    'style': 'invis',
+                })
+
+        elif type(edge) is MachineOutputDirectedEdge:
+            with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
+                subgraph.edge(edge.start.id, edge.end.id, '', **{
+                    'style': 'invis',
+                })
 
     dot.render('./output/test.gv', format='png').replace('\\', '/')
 
