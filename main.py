@@ -35,6 +35,8 @@ def solve(
     machine_index = 0
     machines: list[str] = [] 
 
+    machine_outputs: set[ItemName] = set()
+
     item_out_links: dict[ItemName, list[str]] = defaultdict(list)
     item_in_links: dict[ItemName, list[str]] = defaultdict(list)
 
@@ -58,6 +60,7 @@ def solve(
 
         # Make output variables and constraints
         for item, quantity in recipe.outputs:
+            machine_outputs.add(item)
             item_out_link = f'{machine_name}_OUT_{item}'
             setattr(model, item_out_link, pyomo.Var(domain=pyomo.NonNegativeReals))
             item_out_links[item].append(item_out_link)
@@ -135,10 +138,26 @@ def solve(
     # Add target
     model.target = pyomo.Constraint(rule=lambda model: getattr(model, f'SINK_{target.item}') >= target.quantity)
 
+    # Add taxes on sources which are a machine output
+    taxes: list[str] = []
+    model.SOURCE_TAX_CONSTRAINTS = pyomo.ConstraintList()
+    for item, source_name in item_source_map.items():
+        if item in machine_outputs:
+            source_tax_name = f'SOURCE_TAX_{item}'
+            setattr(model, source_tax_name, pyomo.Var(domain=pyomo.NonNegativeReals))
+            tax_variable = getattr(model, source_tax_name)
+            source_variable = getattr(model, source_name)
+            model.SOURCE_TAX_CONSTRAINTS.add(tax_variable == source_variable * -5)
+            taxes.append(source_tax_name)
+
     # Add objective
     sources = item_source_map.values()
     model.objective = pyomo.Objective(
-        rule = lambda model: sum([getattr(model, machine) for machine in machines]) - sum([getattr(model, source) for source in sources]),
+        # rule = minimize: sum(machines) + sum(source inputs) + sum(tax)
+        rule = lambda model:                                            \
+            sum([getattr(model, machine) for machine in machines])      \
+            + -1 * sum([getattr(model, source) for source in sources])  \
+            + sum([getattr(model, tax) for tax in taxes]),
         sense = pyomo.minimize,
     )
 
