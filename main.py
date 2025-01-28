@@ -3,11 +3,12 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 import math
 import re
-from typing import Any
+from typing import NewType
 import graphviz # type: ignore
 import pyomo.environ as pyomo # type: ignore
 from pyomo.opt import SolverResults # type: ignore
 
+GameTicks = NewType('GameTicks', int)
 
 class ItemName(str):
     def __new__(cls, value):
@@ -19,12 +20,20 @@ class ItemName(str):
 class Recipe:
     inputs: list[tuple[ItemName, int]]
     outputs: list[tuple[ItemName, int]]
-    duration: int
+    duration: GameTicks
 
 @dataclass
 class TargetRate:
     item: ItemName
     quantity: float
+
+@dataclass
+class MachineRecipe:
+    machine_name: str
+    inputs: list[tuple[ItemName, int]]
+    outputs: list[tuple[ItemName, int]]
+    duration: GameTicks
+
 
 def solve(
         recipes: list[Recipe],
@@ -56,7 +65,8 @@ def solve(
             setattr(model, item_in_link, pyomo.Var(domain=pyomo.NonNegativeReals))
             item_in_links[item].append(item_in_link)
             input_variable = getattr(model, item_in_link)
-            getattr(model, f'{machine_name}_constraints').add(machine_variable == input_variable / quantity)
+            rate = quantity / recipe.duration
+            getattr(model, f'{machine_name}_constraints').add(machine_variable == input_variable / rate)
 
         # Make output variables and constraints
         for item, quantity in recipe.outputs:
@@ -65,14 +75,17 @@ def solve(
             setattr(model, item_out_link, pyomo.Var(domain=pyomo.NonNegativeReals))
             item_out_links[item].append(item_out_link)
             output_variable = getattr(model, item_out_link)
-            getattr(model, f'{machine_name}_constraints').add(machine_variable == output_variable / quantity)
+            rate = quantity / recipe.duration
+            getattr(model, f'{machine_name}_constraints').add(machine_variable == output_variable / rate)
 
         # Add recipe constraints between inputs, outputs
         input_output_pairs = [(i, o) for i in recipe.inputs for o in recipe.outputs]
         for (in_item, in_quantity), (out_item, out_quantity) in input_output_pairs:
             in_variable = getattr(model, f'{machine_name}_IN_{in_item}')
             out_variable = getattr(model, f'{machine_name}_OUT_{out_item}')
-            getattr(model, f'{machine_name}_constraints').add((out_variable / out_quantity) - (in_variable / in_quantity) == 0)
+            in_rate = in_quantity / recipe.duration
+            out_rate = out_quantity / recipe.duration
+            getattr(model, f'{machine_name}_constraints').add((out_variable / out_rate) - (in_variable / in_rate) == 0)
     
     # Make sources for each IN link item
     item_source_map: dict[ItemName, str] = dict()
@@ -564,7 +577,7 @@ def main():
             (ItemName("oxygen"), 500),
             (ItemName("hydrogen"), 1000)
         ],
-        duration = 1000,
+        duration = GameTicks(1000),
     )
     recipe_hydrogen_sulfude = Recipe(
         inputs = [
@@ -574,12 +587,12 @@ def main():
         outputs = [
             (ItemName("hydrogen sulfide"), 1000)
         ],
-        duration = 60,
+        duration = GameTicks(60),
     )
 
     target: TargetRate = TargetRate(
         item = ItemName("hydrogen sulfide"),
-        quantity = 5000,
+        quantity = 5000 / 20,
     )
 
     model, results = solve([recipe_hydrogen, recipe_hydrogen_sulfude], target)
