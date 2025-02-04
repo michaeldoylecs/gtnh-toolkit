@@ -3,37 +3,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 import math
 import re
-from typing import NewType
 import graphviz # type: ignore
 import pyomo.environ as pyomo # type: ignore
 from pyomo.opt import SolverResults # type: ignore
-
-GameTicks = NewType('GameTicks', int)
-
-class ItemName(str):
-    def __new__(cls, value):
-        # ItemNames must not contain spaces. Spaces must be replaced with underscores.
-        value = value.replace(" ", "_")
-        return str.__new__(cls, value)
-
-@dataclass
-class Recipe:
-    inputs: list[tuple[ItemName, int]]
-    outputs: list[tuple[ItemName, int]]
-    duration: GameTicks
-
-@dataclass
-class TargetRate:
-    item: ItemName
-    quantity: float
-
-@dataclass
-class MachineRecipe:
-    machine_name: str
-    inputs: list[tuple[ItemName, int]]
-    outputs: list[tuple[ItemName, int]]
-    duration: GameTicks
-
+from models import GameTicks, Item, ItemStack, Recipe, MachineRecipe, TargetRate, make_item
 
 def solve(
         recipes: list[Recipe],
@@ -44,10 +17,10 @@ def solve(
     machine_index = 0
     machines: list[str] = [] 
 
-    machine_outputs: set[ItemName] = set()
+    machine_outputs: set[Item] = set()
 
-    item_out_links: dict[ItemName, list[str]] = defaultdict(list)
-    item_in_links: dict[ItemName, list[str]] = defaultdict(list)
+    item_out_links: dict[Item, list[str]] = defaultdict(list)
+    item_in_links: dict[Item, list[str]] = defaultdict(list)
 
     for recipe in recipes:
         machine_name = f'M{machine_index}'
@@ -60,39 +33,39 @@ def solve(
         machine_variable = getattr(model, machine_name)
 
         # Make input variables and constraints
-        for item, quantity in recipe.inputs:
-            item_in_link = f'{machine_name}_IN_{item}'
+        for itemstack in recipe.inputs:
+            item_in_link = f'{machine_name}_IN_{itemstack.item.name}'
             setattr(model, item_in_link, pyomo.Var(domain=pyomo.NonNegativeReals))
-            item_in_links[item].append(item_in_link)
+            item_in_links[itemstack.item].append(item_in_link)
             input_variable = getattr(model, item_in_link)
-            rate = quantity / recipe.duration
+            rate = itemstack.quantity / recipe.duration
             getattr(model, f'{machine_name}_constraints').add(machine_variable == input_variable / rate)
 
         # Make output variables and constraints
-        for item, quantity in recipe.outputs:
-            machine_outputs.add(item)
-            item_out_link = f'{machine_name}_OUT_{item}'
+        for itemstack in recipe.outputs:
+            machine_outputs.add(itemstack.item)
+            item_out_link = f'{machine_name}_OUT_{itemstack.item.name}'
             setattr(model, item_out_link, pyomo.Var(domain=pyomo.NonNegativeReals))
-            item_out_links[item].append(item_out_link)
+            item_out_links[itemstack.item].append(item_out_link)
             output_variable = getattr(model, item_out_link)
-            rate = quantity / recipe.duration
+            rate = itemstack.quantity / recipe.duration
             getattr(model, f'{machine_name}_constraints').add(machine_variable == output_variable / rate)
 
         # Add recipe constraints between inputs, outputs
         input_output_pairs = [(i, o) for i in recipe.inputs for o in recipe.outputs]
-        for (in_item, in_quantity), (out_item, out_quantity) in input_output_pairs:
-            in_variable = getattr(model, f'{machine_name}_IN_{in_item}')
-            out_variable = getattr(model, f'{machine_name}_OUT_{out_item}')
-            in_rate = in_quantity / recipe.duration
-            out_rate = out_quantity / recipe.duration
+        for in_itemstack, out_itemstack in input_output_pairs:
+            in_variable = getattr(model, f'{machine_name}_IN_{in_itemstack.item.name}')
+            out_variable = getattr(model, f'{machine_name}_OUT_{out_itemstack.item.name}')
+            in_rate = in_itemstack.quantity / recipe.duration
+            out_rate = out_itemstack.quantity / recipe.duration
             getattr(model, f'{machine_name}_constraints').add((out_variable / out_rate) - (in_variable / in_rate) == 0)
     
     # Make sources for each IN link item
-    item_source_map: dict[ItemName, str] = dict()
+    item_source_map: dict[Item, str] = dict()
     model.SOURCE_CONSTRAINTS = pyomo.ConstraintList()
     for item in item_in_links.keys():
-        source_name = f'SOURCE_{item}'
-        source_out_name = f'SOURCE_OUT_{item}'
+        source_name = f'SOURCE_{item.name}'
+        source_out_name = f'SOURCE_OUT_{item.name}'
         setattr(model, source_name, pyomo.Var(domain=pyomo.Reals))
         setattr(model, source_out_name, pyomo.Var(domain=pyomo.NonNegativeReals))
 
@@ -108,11 +81,11 @@ def solve(
         item_out_links[item].append(source_out_name)
 
     # Make sinks for each OUT link item
-    item_sink_map: dict[ItemName, str] = dict()
+    item_sink_map: dict[Item, str] = dict()
     model.SINK_CONSTRAINTS = pyomo.ConstraintList()
     for item in item_out_links.keys():
-        sink_name = f'SINK_{item}'
-        sink_in_name = f'SINK_IN_{item}'
+        sink_name = f'SINK_{item.name}'
+        sink_in_name = f'SINK_IN_{item.name}'
         setattr(model, sink_name, pyomo.Var(domain=pyomo.NonNegativeReals))
         setattr(model, sink_in_name, pyomo.Var(domain=pyomo.NonNegativeReals))
 
@@ -149,14 +122,14 @@ def solve(
         model.OUT_LINK_EDGE_CONSTRAINTS.add(getattr(model, out_link) == sum([getattr(model, edge) for edge in outgoing_edges]))
 
     # Add target
-    model.target = pyomo.Constraint(rule=lambda model: getattr(model, f'SINK_{target.item}') >= target.quantity)
+    model.target = pyomo.Constraint(rule=lambda model: getattr(model, f'SINK_{target.item.name}') >= target.quantity_per_second)
 
     # Add taxes on sources which are a machine output
     taxes: list[str] = []
     model.SOURCE_TAX_CONSTRAINTS = pyomo.ConstraintList()
     for item, source_name in item_source_map.items():
         if item in machine_outputs:
-            source_tax_name = f'SOURCE_TAX_{item}'
+            source_tax_name = f'SOURCE_TAX_{item.name}'
             setattr(model, source_tax_name, pyomo.Var(domain=pyomo.NonNegativeReals))
             tax_variable = getattr(model, source_tax_name)
             source_variable = getattr(model, source_name)
@@ -177,10 +150,6 @@ def solve(
     # Solve
     result = solver.solve(model)
     return model, result
-
-@dataclass
-class Item:
-    id: ItemName
 
 @dataclass
 class ItemRate:
@@ -382,7 +351,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         graph.edges.append(ItemDirectedEdge(
             start = link_name_to_node_map[source],
             end = link_name_to_node_map[source_out],
-            item = Item(id = ItemName(item_name)),
+            item = make_item(item_name),
             quantity = quantity,
         ))
 
@@ -415,7 +384,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
         graph.edges.append(ItemDirectedEdge(
             start = link_name_to_node_map[sink_in],
             end = link_name_to_node_map[sink],
-            item = Item(id = ItemName(item_name)),
+            item = make_item(item_name),
             quantity = quantity,
         ))
     
@@ -496,7 +465,7 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
             graph.edges.append(ItemDirectedEdge(
                 start = start,
                 end = end,
-                item = Item(id = ItemName(item)),
+                item = make_item(item),
                 quantity = value
             ))
 
@@ -571,28 +540,30 @@ def main():
     # Dummy data
     recipe_hydrogen = Recipe(
         inputs = [
-            (ItemName("water"), 500)
+            ItemStack(make_item("water"), 500)
         ],
         outputs = [
-            (ItemName("oxygen"), 500),
-            (ItemName("hydrogen"), 1000)
+            ItemStack(make_item("oxygen"), 500),
+            ItemStack(make_item("hydrogen"), 1000)
         ],
         duration = GameTicks(1000),
+        eu_per_gametick = 100,
     )
     recipe_hydrogen_sulfude = Recipe(
         inputs = [
-            (ItemName("sulfur"), 1),
-            (ItemName("hydrogen"), 2000)
+            ItemStack(make_item("sulfur"), 1),
+            ItemStack(make_item("hydrogen"), 2000)
         ],
         outputs = [
-            (ItemName("hydrogen sulfide"), 1000)
+            ItemStack(make_item("hydrogen sulfide"), 1000)
         ],
         duration = GameTicks(60),
+        eu_per_gametick = 200,
     )
 
     target: TargetRate = TargetRate(
-        item = ItemName("hydrogen sulfide"),
-        quantity = 5000 / 20,
+        item = make_item("hydrogen sulfide"),
+        quantity_per_second = 5000 / 20,
     )
 
     model, results = solve([recipe_hydrogen, recipe_hydrogen_sulfude], target)
