@@ -1,4 +1,5 @@
 import abc
+from collections import defaultdict
 from dataclasses import dataclass, field
 import math
 import re
@@ -330,64 +331,135 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
 
 
 def draw(graph: SolutionGraph):
+
+    def make_sources_table(sources: list[SourceNode]):
+        table = ''.join([
+            '<<table border="0" cellspacing="0">',
+            '<tr>',
+            *[f'<td border="1" PORT="{source.id}">{source.item} {source.quantity}</td>' for source in sources],
+            '</tr>',
+            '</table>>',
+        ])
+        return table
+
+    def make_sinks_table(sinks: list[SinkNode]):
+        table = ''.join([
+            '<<table border="0" cellspacing="0">',
+            '<tr>',
+            *[f'<td border="1" PORT="{sink.id}">{sink.item} {sink.quantity}</td>' for sink in sinks],
+            '</tr>',
+            '</table>>',
+        ])
+        return table
+
+    def make_machine_table(machine: MachineNode, inputs: list[MachineInputNode], outputs: list[MachineOutputNode]):
+        table = ''.join([
+            '<<table border="0" cellspacing="0">',
+            '<tr>',
+            *[f'<td border="1" PORT="{input.id}">{input.item}</td>' for input in inputs],
+            '</tr>',
+            '<tr>',
+            *f'<td border="1" PORT="{machine.id}">{machine.machine_name} x{machine.quantity}</td>',
+            '</tr>',
+            '<tr>',
+            *[f'<td border="1" PORT="{output.id}">{output.item}</td>' for output in outputs],
+            '</tr>',
+            '</table>>',
+        ])
+        return table
+
     # Make the graph
     dot = graphviz.Digraph(comment='GTNH-ToolKit')
 
     # Style the graph
     dot.attr(rankdir='TB')
 
-    # Add the nodes
-    for node in graph.nodes:
-        if type(node) is SourceNode:
-            with dot.subgraph(name='cluster_sources') as subgraph:
-                subgraph.attr(rank='source', color='lightgrey', style='filled')
-                subgraph.node(node.id, f'{node.item}\n{node.quantity}')
+    # Source Nodes
+    sourcesMap: dict[str, SourceNode] = dict([(node.id, node) for node in graph.nodes if type(node) is SourceNode])
+    with dot.subgraph(name='cluster_sources') as subgraph:
+        subgraph.attr(rank='source', color='lightgrey', style='filled', pad='0', margin='0')
+        subgraph.node('sources', make_sources_table(list(sourcesMap.values())), **{
+            'shape': 'plain',
+        })
+    
+    # Sink Nodes
+    sinksMap: dict[str, SinkNode] = dict([(node.id, node) for node in graph.nodes if type(node) is SinkNode])
+    with dot.subgraph(name='cluster_sinks') as subgraph:
+        subgraph.attr(rank='sink', color='lightgrey', style='filled', pad='0', margin='0')
+        subgraph.node('sinks', make_sinks_table(list(sinksMap.values())), **{
+            'shape': 'plain',
+        })
 
-        elif type(node) is SinkNode:
-            with dot.subgraph(name='cluster_sinks') as subgraph:
-                subgraph.attr(rank="sink", color='lightgrey', style='filled')
-                subgraph.node(node.id, f'{node.item}\n{node.quantity}')
+    # Machine Nodes
+    machineMap: dict[str, MachineNode] = dict([(node.id, node) for node in graph.nodes if type(node) is MachineNode])
+    
+    # Machine Input Node
+    machineInputsMap: dict[str, list[MachineInputNode]] = defaultdict(list)
+    for machineInput in [node for node in graph.nodes if type(node) is MachineInputNode]:
+        machineInputsMap[machineInput.machine_id].append(machineInput)
+    inputToMachineMap: dict[str, MachineNode] = { v.id: machineMap[k] for (k, list) in machineInputsMap.items() for v in list }
 
-        elif type(node) is MachineNode:
-            with dot.subgraph(name=f'cluster_{node.id}') as subgraph:
-                subgraph.node(node.id, f'{node.machine_name}\n{node.quantity}')
-        
-        elif type(node) is MachineInputNode:
-            with dot.subgraph(name=f'cluster_{node.machine_id}') as subgraph:
-                subgraph.node(node.id, node.item, **{
-                    'rank': 'source'
-                })
+    # Machine Output Nodes
+    machineOutputsMap: dict[str, list[MachineOutputNode]] = defaultdict(list)
+    for machineOutput in [node for node in graph.nodes if type(node) is MachineOutputNode]:
+        machineOutputsMap[machineOutput.machine_id].append(machineOutput)
+    outputToMachineMap: dict[str, MachineNode] = { v.id: machineMap[k] for (k, list) in machineOutputsMap.items() for v in list }
 
-        elif type(node) is MachineOutputNode:
-            with dot.subgraph(name=f'cluster_{node.machine_id}') as subgraph:
-                subgraph.node(node.id, node.item, **{
-                    'rank': 'sink'
-                })
+    # Combine machine, machine inputs, and machine outputs into 1 table node
+    for (machine_id, machineNode) in machineMap.items():
+        inputs = machineInputsMap[machine_id]
+        outputs = machineOutputsMap[machine_id]
+        dot.node(machine_id, make_machine_table(machineNode, inputs, outputs), **{
+            'shape': 'plain',
+        })
 
-        elif type(node) is ItemNode:
-            with dot.subgraph(name='regular') as subgraph:
-                subgraph.node(node.id, **{
-                    'style': 'invis',
-                    'fixedsize': 'true',
-                    'width': '0',
-                    'height': '0',
-                })
+    # Handle ItemNodes
+    itemNodeMap: dict[str, ItemNode] = { node.id: node for node in graph.nodes if type(node) is ItemNode }
+    for itemNode in itemNodeMap.keys():
+        with dot.subgraph(name='regular') as subgraph:
+            subgraph.node(itemNode, **{
+                'style': 'invis',
+                'fixedsize': 'true',
+                'width': '0',
+                'height': '0',
+            })
 
     # Add the edges
     for edge in graph.edges:
         if type(edge) is ItemDirectedEdge:
-            dot.edge(edge.start.id, edge.end.id, label = f'({edge.quantity})')
+            start_id = edge.start.id
+            end_id = edge.end.id
+
+            # Sources are prefixed by 'sources:'
+            if edge.start.id in sourcesMap:
+                start_id = 'sources:' + edge.start.id
+            # Sinks are prefixed by 'sinks:'
+            if edge.end.id in sinksMap:
+                end_id = 'sinks:' + edge.end.id
+            # Machine inputs are prefixed by their machine id (e.g. M0:)
+            if edge.end.id in inputToMachineMap:
+                end_id = f'{inputToMachineMap[edge.end.id].id}:{edge.end.id}'
+            # Machine outputs are prefixed by their machine id (e.g. M0:)
+            if edge.start.id in outputToMachineMap:
+                start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}'
+
+            dot.edge(start_id, end_id, label = f'({edge.quantity})')
             
         elif type(edge) is MachineInputDirectedEdge:
+            start_id = f'{edge.machine_id}:{edge.start.id}'
+            end_id = f'{edge.machine_id}:{edge.machine_id}'
             with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
-                subgraph.edge(edge.start.id, edge.end.id, '', **{
+                subgraph.edge(start_id, end_id, '', **{
                     'style': 'invis',
                 })
 
         elif type(edge) is MachineOutputDirectedEdge:
+            start_id = f'{edge.machine_id}:{edge.machine_id}'
+            end_id = f'{edge.machine_id}:{edge.end.id}'
             with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
-                subgraph.edge(edge.start.id, edge.end.id, '', **{
+                subgraph.edge(start_id, end_id, '', **{
                     'style': 'invis',
                 })
 
+    dot.render('./output/test.gv', format='dot').replace('\\', '/')
     dot.render('./output/test.gv', format='png').replace('\\', '/')

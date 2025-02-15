@@ -20,9 +20,6 @@ def main():
         print(f"{v} = {varobject.value}")
 
     graph = build_solution_graph(model)
-    print(graph.nodes)
-    print(graph.edges)
-
     draw(graph)
 
 if __name__ == "__main__":
