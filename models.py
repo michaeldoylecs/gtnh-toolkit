@@ -33,6 +33,17 @@ class TargetRate:
     item: Item
     quantity_per_second: float
 
+@dataclass(frozen=True)
+class FactoryConfig:
+    recipes: list[Recipe]
+    targets: list[TargetRate]
+
 @cache
 def make_item(name: str) -> Item:
     return Item(name)
+
+def make_itemstack(name: str, quantity: int) -> ItemStack:
+    return ItemStack(make_item(name), quantity)
+
+def make_target(itemname: str, quantity: float) -> TargetRate:
+    return TargetRate(make_item(itemname), quantity)

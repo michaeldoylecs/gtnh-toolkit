@@ -1,3 +1,6 @@
+# Ignore dotfiles, with exceptions
+.*
+!.gitignore
+
 __pycache__
-.python-version
 output

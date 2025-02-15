@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "graphviz>=0.20.3",
     "mypy>=1.14.1",
+    "pydantic>=2.10.6",
     "pyomo>=6.8.2",
     "ruff>=0.9.2",
 ]
