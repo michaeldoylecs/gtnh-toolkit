@@ -1,8 +1,7 @@
 from collections import defaultdict
 import pyomo.environ as pyomo # type: ignore
 from pyomo.opt import SolverResults # type: ignore
-from models import GameTicks, Item, ItemStack, Recipe, MachineRecipe, TargetRate, make_item
-
+from models import Item, Recipe, TargetRate
 
 def solve(
         recipes: list[Recipe],
