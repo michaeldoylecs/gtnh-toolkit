@@ -353,16 +353,36 @@ def draw(graph: SolutionGraph):
         return table
 
     def make_machine_table(machine: MachineNode, inputs: list[MachineInputNode], outputs: list[MachineOutputNode]):
+        input_table = ''.join([
+            '<table border="0" cellspacing="0">',
+            '<tr>',
+            *[f'<td border="1" bgcolor="#043742" PORT="{input.id}"><FONT color="white">{input.item}</FONT></td>' for input in inputs],
+            '</tr>',
+            '</table>',
+        ])
+
+        output_table = ''.join([
+            '<table border="0" cellspacing="0">',
+            '<tr>',
+            *[f'<td border="1" PORT="{output.id}">{output.item}</td>' for output in outputs],
+            '</tr>',
+            '</table>',
+        ])
+
         table = ''.join([
             '<<table border="0" cellspacing="0">',
             '<tr>',
-            *[f'<td border="1" PORT="{input.id}">{input.item}</td>' for input in inputs],
+            '<td>',
+            input_table,
+            '</td>',
             '</tr>',
             '<tr>',
-            *f'<td border="1" PORT="{machine.id}">{machine.machine_name} x{machine.quantity}</td>',
+            *f'<td border="0" PORT="{machine.id}">{machine.machine_name} x{machine.quantity}</td>',
             '</tr>',
             '<tr>',
-            *[f'<td border="1" PORT="{output.id}">{output.item}</td>' for output in outputs],
+            '<td>',
+            output_table,
+            '</td>',
             '</tr>',
             '</table>>',
         ])
