@@ -443,7 +443,15 @@ def draw(graph: SolutionGraph):
             if edge.start.id in outputToMachineMap:
                 start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}'
 
-            dot.edge(start_id, end_id, label = f'({edge.quantity})')
+            labeltext = f'({edge.quantity}/s)'
+            headlabel = labeltext if type(edge.end) is not ItemNode else ''
+            taillabel = labeltext if type(edge.start) is not ItemNode else ''
+            dot.edge(start_id, end_id, **{
+                'fontsize': '10',
+                'headlabel': headlabel,
+                'taillabel': taillabel,
+                'labeldistance': '1.1',
+            })
             
         elif type(edge) is MachineInputDirectedEdge:
             start_id = f'{edge.machine_id}:{edge.start.id}'
