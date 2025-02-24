@@ -466,11 +466,15 @@ def draw(graph: SolutionGraph):
             labeltext = f'({edge.quantity}/s)'
             headlabel = labeltext if type(edge.end) is not ItemNode else ''
             taillabel = labeltext if type(edge.start) is not ItemNode else ''
+            arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
+            arrowtail = 'tee' if type(edge.start) is not ItemNode else 'none'
             dot.edge(start_id, end_id, **{
                 'fontsize': '10',
                 'headlabel': headlabel,
                 'taillabel': taillabel,
                 'labeldistance': '1.1',
+                'arrowhead': arrowhead,
+                'arrowtail': arrowtail,
             })
             
         elif type(edge) is MachineInputDirectedEdge:
