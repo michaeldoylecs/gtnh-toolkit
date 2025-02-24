@@ -438,10 +438,10 @@ def draw(graph: SolutionGraph):
     for itemNode in itemNodeMap.keys():
         with dot.subgraph(name='regular') as subgraph:
             subgraph.node(itemNode, **{
-                'style': 'invis',
-                'fixedsize': 'true',
-                'width': '0',
-                'height': '0',
+                'style': 'invisible',
+                'shape': 'point',
+                'width': '0.03',
+                'height': '0.03',
             })
 
     # Add the edges
