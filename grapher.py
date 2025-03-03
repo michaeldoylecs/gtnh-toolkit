@@ -337,7 +337,7 @@ def draw(graph: SolutionGraph):
         table = ''.join([
             '<<table border="0" cellspacing="0">',
             '<tr>',
-            *[f'<td border="1" PORT="{source.id}">{source.item} {source.quantity}</td>' for source in sources],
+            *[f'<td border="1" PORT="{source.id}">{source.item}</td>' for source in sources],
             '</tr>',
             '</table>>',
         ])
@@ -347,7 +347,7 @@ def draw(graph: SolutionGraph):
         table = ''.join([
             '<<table border="0" cellspacing="0">',
             '<tr>',
-            *[f'<td border="1" PORT="{sink.id}">{sink.item} {sink.quantity}</td>' for sink in sinks],
+            *[f'<td border="1" PORT="{sink.id}">{sink.item}</td>' for sink in sinks],
             '</tr>',
             '</table>>',
         ])
@@ -357,7 +357,7 @@ def draw(graph: SolutionGraph):
         input_table = ''.join([
             '<table border="0" cellspacing="0">',
             '<tr>',
-            *[f'<td border="1" bgcolor="#043742" PORT="{input.id}"><FONT color="white">{input.item}</FONT></td>' for input in inputs],
+            *([f'<td border="1" bgcolor="#043742" PORT="{input.id}"><FONT color="white">{input.item}</FONT></td>' for input in inputs] if inputs else '<td></td>'),
             '</tr>',
             '</table>',
         ])
@@ -365,7 +365,7 @@ def draw(graph: SolutionGraph):
         machine_table = ''.join([
             '<table border="0" cellspacing="0">',
             '<tr>',
-            *f'<td border="0" PORT="{machine.id}">{machine.machine_name} x{machine.quantity}</td>',
+            f'<td border="0" PORT="{machine.id}">{machine.machine_name} x{'{:,.2f}'.format(machine.quantity)}</td>',
             '</tr>',
             '</table>',
         ])
@@ -373,7 +373,7 @@ def draw(graph: SolutionGraph):
         output_table = ''.join([
             '<table border="0" cellspacing="0">',
             '<tr>',
-            *[f'<td border="1" PORT="{output.id}">{output.item}</td>' for output in outputs],
+            *([f'<td border="1" bgcolor="orange" PORT="{output.id}">{output.item}</td>' for output in outputs] if outputs else '<td></td>'),
             '</tr>',
             '</table>',
         ])
@@ -481,7 +481,7 @@ def draw(graph: SolutionGraph):
             if edge.start.id in outputToMachineMap:
                 start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}:s'
 
-            labeltext = f'({edge.quantity}/s)'
+            labeltext = f'({'{:,.2f}'.format(edge.quantity)}/s)'
             headlabel = labeltext if type(edge.end) is not ItemNode else ''
             taillabel = labeltext if type(edge.start) is not ItemNode else ''
             arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
