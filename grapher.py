@@ -108,7 +108,7 @@ def build_solution_graph(model: pyomo.Model, machine_id_to_name_map: dict[str, s
     graph = SolutionGraph()
 
     # Extract variable names and values
-    variables = {str(v): varobject.value for v in model.component_objects(pyomo.Var, active=True) for varobject in [getattr(model, str(v))]}
+    variables = {v.name.strip("'"): v.value for v in model.component_objects(pyomo.Var, active=True) for v in v.values()}
     
     # Define regex patterns
     machine_pattern = re.compile(r'^(M\d+)$')

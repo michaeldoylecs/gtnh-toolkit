@@ -1,3 +1,4 @@
+from pprint import pprint
 import pyomo.environ as pyomo # type: ignore
 from configreader import load_factory_config
 from grapher import build_solution_graph, draw
@@ -15,9 +16,8 @@ def main():
     # Print the results
     model.pprint()
     print(results)
-    for v in model.component_objects(pyomo.Var, active=True):
-        varobject = getattr(model, str(v))
-        print(f"{v} = {varobject.value}")
+    optimal_values = {v.name.strip("'"): v.value for v in model.component_objects(pyomo.Var, active=True) for v in v.values()}
+    pprint(optimal_values)
 
     graph = build_solution_graph(model, machine_map)
     draw(graph)
