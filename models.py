@@ -11,7 +11,7 @@ class Item:
 @dataclass(frozen=True)
 class ItemStack:
     item: Item
-    quantity: int
+    quantity: float
 
 @dataclass(frozen=True)
 class Recipe:
@@ -43,7 +43,7 @@ class FactoryConfig:
 def make_item(name: str) -> Item:
     return Item(name)
 
-def make_itemstack(name: str, quantity: int) -> ItemStack:
+def make_itemstack(name: str, quantity: float) -> ItemStack:
     return ItemStack(make_item(name), quantity)
 
 def make_target(itemname: str, quantity: float) -> TargetRate:
