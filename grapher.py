@@ -515,5 +515,12 @@ def draw(graph: SolutionGraph):
         else:
             print(f'Did not handle Edge of type "{type(edge)}"')
 
-    dot.render('./output/test.gv', format='dot').replace('\\', '/')
-    dot.render('./output/test.gv', format='png').replace('\\', '/')
+    try:
+        dot.render('./output/test.gv', format='dot', quiet=False)
+        dot.render('./output/test.gv', format='png', quiet=False)
+    except graphviz.CalledProcessError as e:
+        print("Graphviz Error:")
+        print("Return Code:", e.returncode)
+        print("Command:", e.cmd)
+        print("Output:", e.output.decode("utf-8") if e.output else "No output")
+        print("Error Message:", e.stderr.decode("utf-8") if e.stderr else "No error message")

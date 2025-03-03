@@ -6,7 +6,7 @@ from solver import solve
     
 def main():
     # Dummy data.
-    factory_config = load_factory_config("./.input/hydrogen_sulfide.json")
+    factory_config = load_factory_config("./.input/naq_fuel_mk1.yaml")
 
     if factory_config is None:
         print("Loaded config had errors")
