@@ -104,7 +104,7 @@ class SolutionGraph:
     nodes: list[Node] = field(default_factory=list)
     edges: list[DirectedEdge] = field(default_factory=list)
 
-def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
+def build_solution_graph(model: pyomo.Model, machine_id_to_name_map: dict[str, str]) -> SolutionGraph:
     graph = SolutionGraph()
 
     # Extract variable names and values
@@ -251,9 +251,10 @@ def build_solution_graph(model: pyomo.Model) -> SolutionGraph:
     for machine, quantity in machines.items():
         match = machine_pattern.match(machine)
         if match:
-            machine_name, = match.groups()
+            machine_id, = match.groups()
+            machine_name = machine_id_to_name_map[machine_id]
             machine_node = MachineNode(id = machine, machine_name = machine_name, quantity = quantity)
-            machine_nodes[machine_name] = machine_node
+            machine_nodes[machine_id] = machine_node
             link_name_to_node_map[machine] = machine_node
             graph.nodes.append(machine_node)
 

@@ -15,6 +15,7 @@ class ItemStack:
 
 @dataclass(frozen=True)
 class Recipe:
+    machine_name: str
     inputs: list[ItemStack]
     outputs: list[ItemStack]
     duration: GameTicks
