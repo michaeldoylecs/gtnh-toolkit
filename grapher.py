@@ -362,6 +362,14 @@ def draw(graph: SolutionGraph):
             '</table>',
         ])
 
+        machine_table = ''.join([
+            '<table border="0" cellspacing="0">',
+            '<tr>',
+            *f'<td border="0" PORT="{machine.id}">{machine.machine_name} x{machine.quantity}</td>',
+            '</tr>',
+            '</table>',
+        ])
+
         output_table = ''.join([
             '<table border="0" cellspacing="0">',
             '<tr>',
@@ -371,17 +379,19 @@ def draw(graph: SolutionGraph):
         ])
 
         table = ''.join([
-            '<<table border="0" cellspacing="0">',
+            '<<table border="0" cellpadding="0" cellspacing="0">',
             '<tr>',
-            '<td>',
+            '<td border="0" cellpadding="0" cellspacing="0">',
             input_table,
             '</td>',
             '</tr>',
             '<tr>',
-            *f'<td border="0" PORT="{machine.id}">{machine.machine_name} x{machine.quantity}</td>',
+            '<td border="1" cellpadding="0" cellspacing="0">',
+            machine_table,
+            '</td>',
             '</tr>',
             '<tr>',
-            '<td>',
+            '<td border="0" cellpadding="0" cellspacing="0">',
             output_table,
             '</td>',
             '</tr>',
@@ -401,6 +411,7 @@ def draw(graph: SolutionGraph):
         subgraph.attr(rank='source', color='lightgrey', style='filled', pad='0', margin='0')
         subgraph.node('sources', make_sources_table(list(sourcesMap.values())), **{
             'shape': 'plain',
+            'margin': '0',
         })
     
     # Sink Nodes
@@ -430,9 +441,15 @@ def draw(graph: SolutionGraph):
     for (machine_id, machineNode) in machineMap.items():
         inputs = machineInputsMap[machine_id]
         outputs = machineOutputsMap[machine_id]
-        dot.node(machine_id, make_machine_table(machineNode, inputs, outputs), **{
-            'shape': 'plain',
-        })
+        with dot.subgraph(name=f'cluster_{machine_id}') as subgraph:
+            subgraph.attr(**{
+                'margin': '0',
+                'peripheries': '0',
+            })
+            subgraph.node(machine_id, make_machine_table(machineNode, inputs, outputs), **{
+                'shape': 'plain',
+                'margin': '0',
+            })
 
     # Handle ItemNodes
     itemNodeMap: dict[str, ItemNode] = { node.id: node for node in graph.nodes if type(node) is ItemNode }
@@ -459,10 +476,10 @@ def draw(graph: SolutionGraph):
                 end_id = 'sinks:' + edge.end.id
             # Machine inputs are prefixed by their machine id (e.g. M0:)
             if edge.end.id in inputToMachineMap:
-                end_id = f'{inputToMachineMap[edge.end.id].id}:{edge.end.id}'
+                end_id = f'{inputToMachineMap[edge.end.id].id}:{edge.end.id}:n'
             # Machine outputs are prefixed by their machine id (e.g. M0:)
             if edge.start.id in outputToMachineMap:
-                start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}'
+                start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}:s'
 
             labeltext = f'({edge.quantity}/s)'
             headlabel = labeltext if type(edge.end) is not ItemNode else ''
@@ -484,6 +501,7 @@ def draw(graph: SolutionGraph):
             with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
                 subgraph.edge(start_id, end_id, '', **{
                     'style': 'invis',
+                    'margin': '0',
                 })
 
         elif type(edge) is MachineOutputDirectedEdge:
@@ -492,7 +510,10 @@ def draw(graph: SolutionGraph):
             with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
                 subgraph.edge(start_id, end_id, '', **{
                     'style': 'invis',
+                    'margin': '0',
                 })
+        else:
+            print(f'Did not handle Edge of type "{type(edge)}"')
 
     dot.render('./output/test.gv', format='dot').replace('\\', '/')
     dot.render('./output/test.gv', format='png').replace('\\', '/')
