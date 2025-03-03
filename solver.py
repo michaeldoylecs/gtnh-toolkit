@@ -129,7 +129,7 @@ def solve(
             setattr(model, source_tax_name, pyomo.Var(domain=pyomo.NonNegativeReals))
             tax_variable = getattr(model, source_tax_name)
             source_variable = getattr(model, source_name)
-            model.SOURCE_TAX_CONSTRAINTS.add(tax_variable == source_variable * -5)
+            model.SOURCE_TAX_CONSTRAINTS.add(tax_variable == source_variable * -50000)
             taxes.append(source_tax_name)
 
     # Add objective
