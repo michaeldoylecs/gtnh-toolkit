@@ -1,6 +1,7 @@
 import abc
 from collections import defaultdict
 from dataclasses import dataclass, field
+import itertools
 import math
 import re
 import graphviz # type: ignore
@@ -357,7 +358,7 @@ def draw(graph: SolutionGraph):
         input_table = ''.join([
             '<table border="0" cellspacing="0">',
             '<tr>',
-            *([f'<td border="1" bgcolor="#043742" PORT="{input.id}"><FONT color="white">{input.item}</FONT></td>' for input in inputs] if inputs else '<td></td>'),
+            *([f'<td border="1" bgcolor="#0a5161" PORT="{input.id}"><FONT color="white">{input.item}</FONT></td>' for input in inputs] if inputs else '<td></td>'),
             '</tr>',
             '</table>',
         ])
@@ -365,7 +366,7 @@ def draw(graph: SolutionGraph):
         machine_table = ''.join([
             '<table border="0" cellspacing="0">',
             '<tr>',
-            f'<td border="0" PORT="{machine.id}">{machine.machine_name} x{'{:,.2f}'.format(machine.quantity)}</td>',
+            f'<td border="0" bgcolor="white" PORT="{machine.id}">{machine.machine_name} x{'{:,.2f}'.format(machine.quantity)}</td>',
             '</tr>',
             '</table>',
         ])
@@ -373,7 +374,7 @@ def draw(graph: SolutionGraph):
         output_table = ''.join([
             '<table border="0" cellspacing="0">',
             '<tr>',
-            *([f'<td border="1" bgcolor="orange" PORT="{output.id}">{output.item}</td>' for output in outputs] if outputs else '<td></td>'),
+            *([f'<td border="1" bgcolor="#0a5161" PORT="{output.id}"><FONT color="white">{output.item}</FONT></td>' for output in outputs] if outputs else '<td></td>'),
             '</tr>',
             '</table>',
         ])
@@ -403,7 +404,12 @@ def draw(graph: SolutionGraph):
     dot = graphviz.Digraph(comment='GTNH-ToolKit')
 
     # Style the graph
-    dot.attr(rankdir='TB')
+    dot.attr(
+        bgcolor='#043742',
+        rankdir='TB',
+        ranksep='1.25',
+        nodesed='0.25',
+    )
 
     # Source Nodes
     sourcesMap: dict[str, SourceNode] = dict([(node.id, node) for node in graph.nodes if type(node) is SourceNode])
@@ -456,13 +462,22 @@ def draw(graph: SolutionGraph):
     for itemNode in itemNodeMap.keys():
         with dot.subgraph(name='regular') as subgraph:
             subgraph.node(itemNode, **{
-                'style': 'invisible',
                 'shape': 'point',
                 'width': '0.03',
                 'height': '0.03',
             })
 
     # Add the edges
+    edge_colors = itertools.cycle([
+        '#b58900', # 'yellow'
+        '#cb4b16', # 'orange'
+        '#dc322f', # 'red'
+        '#d33682', # 'magenta'
+        '#6c71c4', # 'violet'
+        '#268bd2', # 'blue'
+        '#2aa198', # 'cyan'
+        '#859900', # 'green'
+    ])
     for edge in graph.edges:
         if type(edge) is ItemDirectedEdge:
             start_id = edge.start.id
@@ -486,13 +501,16 @@ def draw(graph: SolutionGraph):
             taillabel = labeltext if type(edge.start) is not ItemNode else ''
             arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
             arrowtail = 'tee' if type(edge.start) is not ItemNode else 'none'
+            edge_color = next(edge_colors)
             dot.edge(start_id, end_id, **{
                 'fontsize': '10',
+                'fontcolor': edge_color,
                 'headlabel': headlabel,
                 'taillabel': taillabel,
                 'labeldistance': '1.1',
                 'arrowhead': arrowhead,
                 'arrowtail': arrowtail,
+                'color': edge_color,
             })
             
         elif type(edge) is MachineInputDirectedEdge:
