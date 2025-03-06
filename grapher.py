@@ -9,6 +9,16 @@ import pyomo.environ as pyomo # type: ignore
 
 from models import Item, make_item
 
+EDGE_COLOR_ITERATOR = itertools.cycle([
+    '#b58900', # 'yellow'
+    '#cb4b16', # 'orange'
+    '#dc322f', # 'red'
+    '#d33682', # 'magenta'
+    '#6c71c4', # 'violet'
+    '#268bd2', # 'blue'
+    '#2aa198', # 'cyan'
+    '#859900', # 'green'
+])
 
 @dataclass
 class ItemRate:
@@ -435,13 +445,11 @@ def draw(graph: SolutionGraph):
     machineInputsMap: dict[str, list[MachineInputNode]] = defaultdict(list)
     for machineInput in [node for node in graph.nodes if type(node) is MachineInputNode]:
         machineInputsMap[machineInput.machine_id].append(machineInput)
-    inputToMachineMap: dict[str, MachineNode] = { v.id: machineMap[k] for (k, list) in machineInputsMap.items() for v in list }
 
     # Machine Output Nodes
     machineOutputsMap: dict[str, list[MachineOutputNode]] = defaultdict(list)
     for machineOutput in [node for node in graph.nodes if type(node) is MachineOutputNode]:
         machineOutputsMap[machineOutput.machine_id].append(machineOutput)
-    outputToMachineMap: dict[str, MachineNode] = { v.id: machineMap[k] for (k, list) in machineOutputsMap.items() for v in list }
 
     # Combine machine, machine inputs, and machine outputs into 1 table node
     for (machine_id, machineNode) in machineMap.items():
@@ -480,20 +488,10 @@ def draw(graph: SolutionGraph):
             itemNodeConnectedEdges[endItemNode.id].append(edge)
         else:
             edges_without_item_nodes.append(edge)
-    
-    # Build item nodes and connecting edges
-    edge_colors = itertools.cycle([
-        '#b58900', # 'yellow'
-        '#cb4b16', # 'orange'
-        '#dc322f', # 'red'
-        '#d33682', # 'magenta'
-        '#6c71c4', # 'violet'
-        '#268bd2', # 'blue'
-        '#2aa198', # 'cyan'
-        '#859900', # 'green'
-    ])
+
+    # Draw edges connected to ItemNodes
     for item_node_id, item_edges in itemNodeConnectedEdges.items():
-        edge_color = next(edge_colors)
+        edge_color = next(EDGE_COLOR_ITERATOR)
         with dot.subgraph(name='regular') as subgraph:
             subgraph.node(item_node_id, **{
                 'shape': 'point',
@@ -503,74 +501,11 @@ def draw(graph: SolutionGraph):
             })
         
         for edge in item_edges:
-            start_id = edge.start.id
-            end_id = edge.end.id
-
-            # Sources are prefixed by 'sources:'
-            if edge.start.id in sourcesMap:
-                start_id = 'sources:' + edge.start.id
-            # Sinks are prefixed by 'sinks:'
-            if edge.end.id in sinksMap:
-                end_id = 'sinks:' + edge.end.id
-            # Machine inputs are prefixed by their machine id (e.g. M0:)
-            if edge.end.id in inputToMachineMap:
-                end_id = f'{inputToMachineMap[edge.end.id].id}:{edge.end.id}:n'
-            # Machine outputs are prefixed by their machine id (e.g. M0:)
-            if edge.start.id in outputToMachineMap:
-                start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}:s'
-
-            labeltext = f'({'{:,.2f}'.format(edge.quantity)}/s)'
-            headlabel = labeltext if type(edge.end) is not ItemNode else ''
-            taillabel = labeltext if type(edge.start) is not ItemNode else ''
-            arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
-            arrowtail = 'tee' if type(edge.start) is not ItemNode else 'none'
-            dot.edge(start_id, end_id, **{
-                'fontsize': '10',
-                'fontcolor': edge_color,
-                'headlabel': headlabel,
-                'taillabel': taillabel,
-                'labeldistance': '2.8',
-                'labelangle': '60',
-                'arrowhead': arrowhead,
-                'arrowtail': arrowtail,
-                'color': edge_color,
-            })
+            draw_item_edge(dot, edge, edge_color)
 
     # Connect edges without ItemNodes
     for edge in edges_without_item_nodes:
-        start_id = edge.start.id
-        end_id = edge.end.id
-
-        # Sources are prefixed by 'sources:'
-        if edge.start.id in sourcesMap:
-            start_id = 'sources:' + edge.start.id
-        # Sinks are prefixed by 'sinks:'
-        if edge.end.id in sinksMap:
-            end_id = 'sinks:' + edge.end.id
-        # Machine inputs are prefixed by their machine id (e.g. M0:)
-        if edge.end.id in inputToMachineMap:
-            end_id = f'{inputToMachineMap[edge.end.id].id}:{edge.end.id}:n'
-        # Machine outputs are prefixed by their machine id (e.g. M0:)
-        if edge.start.id in outputToMachineMap:
-            start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}:s'
-
-        labeltext = f'({'{:,.2f}'.format(edge.quantity)}/s)'
-        headlabel = labeltext if type(edge.end) is not ItemNode else ''
-        taillabel = labeltext if type(edge.start) is not ItemNode else ''
-        arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
-        arrowtail = 'tee' if type(edge.start) is not ItemNode else 'none'
-        edge_color = next(edge_colors)
-        dot.edge(start_id, end_id, **{
-            'fontsize': '10',
-            'fontcolor': edge_color,
-            'headlabel': headlabel,
-            'taillabel': taillabel,
-            'labeldistance': '2.8',
-            'labelangle': '60',
-            'arrowhead': arrowhead,
-            'arrowtail': arrowtail,
-            'color': edge_color,
-        })
+        draw_item_edge(dot, edge, next(EDGE_COLOR_ITERATOR))
 
     # Build machine input edges
     for input_edge in machine_input_edges:
@@ -601,3 +536,38 @@ def draw(graph: SolutionGraph):
         print("Command:", e.cmd)
         print("Output:", e.output.decode("utf-8") if e.output else "No output")
         print("Error Message:", e.stderr.decode("utf-8") if e.stderr else "No error message")
+
+def draw_item_edge(dot: graphviz.Digraph, edge: ItemDirectedEdge, color: str):
+    start_id = edge.start.id
+    end_id = edge.end.id
+
+    # Sources are prefixed by 'sources:'
+    if type(edge.start) is SourceNode:
+        start_id = 'sources:' + edge.start.id
+    # Sinks are prefixed by 'sinks:'
+    if type(edge.end) is SinkNode:
+        end_id = 'sinks:' + edge.end.id
+    # Machine inputs are prefixed by their machine id (e.g. M0:)
+    if type(edge.end) is MachineInputNode:
+        end_id = f'{edge.end.machine_id}:{edge.end.id}:n'
+    # Machine outputs are prefixed by their machine id (e.g. M0:)
+    if type(edge.start) is MachineOutputNode:
+        start_id = f'{edge.start.machine_id}:{edge.start.id}:s'
+
+    labeltext = f'({'{:,.2f}'.format(edge.quantity)}/s)'
+    headlabel = labeltext if type(edge.end) is not ItemNode else ''
+    taillabel = labeltext if type(edge.start) is not ItemNode else ''
+    arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
+    arrowtail = 'tee' if type(edge.start) is not ItemNode else 'none'
+    edge_color = color
+    dot.edge(start_id, end_id, **{
+        'fontsize': '10',
+        'fontcolor': edge_color,
+        'headlabel': headlabel,
+        'taillabel': taillabel,
+        'labeldistance': '2.8',
+        'labelangle': '60',
+        'arrowhead': arrowhead,
+        'arrowtail': arrowtail,
+        'color': edge_color,
+    })
