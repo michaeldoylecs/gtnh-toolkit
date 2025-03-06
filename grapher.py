@@ -457,17 +457,31 @@ def draw(graph: SolutionGraph):
                 'margin': '0',
             })
 
-    # Handle ItemNodes
-    itemNodeMap: dict[str, ItemNode] = { node.id: node for node in graph.nodes if type(node) is ItemNode }
-    for itemNode in itemNodeMap.keys():
-        with dot.subgraph(name='regular') as subgraph:
-            subgraph.node(itemNode, **{
-                'shape': 'point',
-                'width': '0.03',
-                'height': '0.03',
-            })
+    # Get directed edges
+    item_directed_edges: list[ItemDirectedEdge] = [edge for edge in graph.edges if type(edge) is ItemDirectedEdge]
 
-    # Add the edges
+    # Get machine input edges
+    machine_input_edges: list[MachineInputDirectedEdge] = [edge for edge in graph.edges if type(edge) is MachineInputDirectedEdge]
+
+    # Get machine output edges
+    machine_output_edges: list[MachineOutputDirectedEdge] = [edge for edge in graph.edges if type(edge) is MachineOutputDirectedEdge]
+    
+    # Group together ItemNodes and their connecting edges.
+    # If an edge does not connect to an ItemNode, add it to another list for processing
+    itemNodeMap: dict[str, ItemNode] = { node.id: node for node in graph.nodes if type(node) is ItemNode }
+    itemNodeConnectedEdges: dict[str, list[ItemDirectedEdge]] = defaultdict(list)
+    edges_without_item_nodes: list[ItemDirectedEdge] = []
+    for edge in item_directed_edges:
+        startItemNode = itemNodeMap.get(edge.start.id)
+        endItemNode = itemNodeMap.get(edge.end.id)
+        if startItemNode:
+            itemNodeConnectedEdges[startItemNode.id].append(edge)
+        elif endItemNode:
+            itemNodeConnectedEdges[endItemNode.id].append(edge)
+        else:
+            edges_without_item_nodes.append(edge)
+    
+    # Build item nodes and connecting edges
     edge_colors = itertools.cycle([
         '#b58900', # 'yellow'
         '#cb4b16', # 'orange'
@@ -478,8 +492,17 @@ def draw(graph: SolutionGraph):
         '#2aa198', # 'cyan'
         '#859900', # 'green'
     ])
-    for edge in graph.edges:
-        if type(edge) is ItemDirectedEdge:
+    for item_node_id, item_edges in itemNodeConnectedEdges.items():
+        edge_color = next(edge_colors)
+        with dot.subgraph(name='regular') as subgraph:
+            subgraph.node(item_node_id, **{
+                'shape': 'point',
+                'width': '0.03',
+                'height': '0.03',
+                'color': edge_color,
+            })
+        
+        for edge in item_edges:
             start_id = edge.start.id
             end_id = edge.end.id
 
@@ -501,7 +524,6 @@ def draw(graph: SolutionGraph):
             taillabel = labeltext if type(edge.start) is not ItemNode else ''
             arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
             arrowtail = 'tee' if type(edge.start) is not ItemNode else 'none'
-            edge_color = next(edge_colors)
             dot.edge(start_id, end_id, **{
                 'fontsize': '10',
                 'fontcolor': edge_color,
@@ -513,26 +535,62 @@ def draw(graph: SolutionGraph):
                 'arrowtail': arrowtail,
                 'color': edge_color,
             })
-            
-        elif type(edge) is MachineInputDirectedEdge:
-            start_id = f'{edge.machine_id}:{edge.start.id}'
-            end_id = f'{edge.machine_id}:{edge.machine_id}'
-            with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
-                subgraph.edge(start_id, end_id, '', **{
-                    'style': 'invis',
-                    'margin': '0',
-                })
 
-        elif type(edge) is MachineOutputDirectedEdge:
-            start_id = f'{edge.machine_id}:{edge.machine_id}'
-            end_id = f'{edge.machine_id}:{edge.end.id}'
-            with dot.subgraph(name=f'cluster_{edge.machine_id}') as subgraph:
-                subgraph.edge(start_id, end_id, '', **{
-                    'style': 'invis',
-                    'margin': '0',
-                })
-        else:
-            print(f'Did not handle Edge of type "{type(edge)}"')
+    # Connect edges without ItemNodes
+    for edge in edges_without_item_nodes:
+        start_id = edge.start.id
+        end_id = edge.end.id
+
+        # Sources are prefixed by 'sources:'
+        if edge.start.id in sourcesMap:
+            start_id = 'sources:' + edge.start.id
+        # Sinks are prefixed by 'sinks:'
+        if edge.end.id in sinksMap:
+            end_id = 'sinks:' + edge.end.id
+        # Machine inputs are prefixed by their machine id (e.g. M0:)
+        if edge.end.id in inputToMachineMap:
+            end_id = f'{inputToMachineMap[edge.end.id].id}:{edge.end.id}:n'
+        # Machine outputs are prefixed by their machine id (e.g. M0:)
+        if edge.start.id in outputToMachineMap:
+            start_id = f'{outputToMachineMap[edge.start.id].id}:{edge.start.id}:s'
+
+        labeltext = f'({'{:,.2f}'.format(edge.quantity)}/s)'
+        headlabel = labeltext if type(edge.end) is not ItemNode else ''
+        taillabel = labeltext if type(edge.start) is not ItemNode else ''
+        arrowhead = 'normal' if type(edge.end) is not ItemNode else 'none'
+        arrowtail = 'tee' if type(edge.start) is not ItemNode else 'none'
+        edge_color = next(edge_colors)
+        dot.edge(start_id, end_id, **{
+            'fontsize': '10',
+            'fontcolor': edge_color,
+            'headlabel': headlabel,
+            'taillabel': taillabel,
+            'labeldistance': '2.8',
+            'labelangle': '60',
+            'arrowhead': arrowhead,
+            'arrowtail': arrowtail,
+            'color': edge_color,
+        })
+
+    # Build machine input edges
+    for input_edge in machine_input_edges:
+        start_id = f'{input_edge.machine_id}:{input_edge.start.id}'
+        end_id = f'{input_edge.machine_id}:{input_edge.machine_id}'
+        with dot.subgraph(name=f'cluster_{input_edge.machine_id}') as subgraph:
+            subgraph.edge(start_id, end_id, '', **{
+                'style': 'invis',
+                'margin': '0',
+            })
+
+    # Build machine output edges
+    for output_edge in machine_output_edges:
+        start_id = f'{output_edge.machine_id}:{output_edge.machine_id}'
+        end_id = f'{output_edge.machine_id}:{output_edge.end.id}'
+        with dot.subgraph(name=f'cluster_{output_edge.machine_id}') as subgraph:
+            subgraph.edge(start_id, end_id, '', **{
+                'style': 'invis',
+                'margin': '0',
+            })
 
     try:
         dot.render('./output/test.gv', format='dot', quiet=False)
