@@ -323,7 +323,6 @@ def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str,
 
         start = link_name_to_node_map[link["start"]]
         end = link_name_to_node_map[link["end"]]
-        print(f'{start.id} -> {end.id}')
 
         item = None
         if isinstance(end, SourceNode):
