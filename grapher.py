@@ -572,10 +572,10 @@ def draw_item_edge(dot: graphviz.Digraph, edge: ItemDirectedEdge, color: str):
 
     # Sources are prefixed by 'sources:'
     if type(edge.start) is SourceNode:
-        start_id = 'sources:' + edge.start.id
+        start_id = 'sources:' + edge.start.id + ':s'
     # Sinks are prefixed by 'sinks:'
     if type(edge.end) is SinkNode:
-        end_id = 'sinks:' + edge.end.id
+        end_id = 'sinks:' + edge.end.id + ':n'
     # Machine inputs are prefixed by their machine id (e.g. M0:)
     if type(edge.end) is MachineInputNode:
         end_id = f'{edge.end.machine_id}:{edge.end.id}:n'
