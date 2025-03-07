@@ -8,10 +8,10 @@ def solve(
         target: TargetRate,
         solver = pyomo.SolverFactory('cbc'),
         model = pyomo.ConcreteModel()
-        ) -> tuple[pyomo.Model, SolverResults, dict[str, str]]:
+        ) -> tuple[pyomo.Model, SolverResults, dict[str, Recipe]]:
     machine_index = 0
     machines: list[str] = [] 
-    machine_id_to_name_map: dict[str, str] = {}
+    machine_id_to_recipe_map: dict[str, Recipe] = {}
     machine_outputs: set[Item] = set()
 
     item_out_links: dict[Item, list[str]] = defaultdict(list)
@@ -21,7 +21,7 @@ def solve(
         machine_name = f'M{machine_index}'
         machine_index += 1
         machines.append(machine_name)
-        machine_id_to_name_map[machine_name] = recipe.machine_name
+        machine_id_to_recipe_map[machine_name] = recipe
 
         # Make machine variable and empty constraint list
         setattr(model, machine_name, pyomo.Var(domain=pyomo.NonNegativeReals))
@@ -147,4 +147,4 @@ def solve(
     result = solver.solve(model)
 
     # TODO: Export a more useful object than a pyomo model
-    return model, result, machine_id_to_name_map
+    return model, result, machine_id_to_recipe_map

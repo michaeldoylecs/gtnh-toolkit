@@ -7,7 +7,7 @@ import re
 import graphviz # type: ignore
 import pyomo.environ as pyomo # type: ignore
 
-from models import Item, make_item
+from models import Item, Recipe, make_item
 
 EDGE_COLOR_ITERATOR = itertools.cycle([
     '#b58900', # 'yellow'
@@ -53,10 +53,12 @@ class SinkNode(Node):
 class MachineNode(Node):
     machine_name: str
     quantity: float
+    duration: float # Seconds
 
-    def __init__(self, id: str, machine_name: str, quantity: float):
+    def __init__(self, id: str, machine_name: str, quantity: float, duration: float):
         self.machine_name = machine_name
         self.quantity = quantity
+        self.duration = duration
         super().__init__(id)
 
 class MachineInputNode(Node):
@@ -115,7 +117,7 @@ class SolutionGraph:
     nodes: list[Node] = field(default_factory=list)
     edges: list[DirectedEdge] = field(default_factory=list)
 
-def build_solution_graph(model: pyomo.Model, machine_id_to_name_map: dict[str, str]) -> SolutionGraph:
+def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str, Recipe]) -> SolutionGraph:
     graph = SolutionGraph()
 
     # Extract variable names and values
@@ -263,8 +265,14 @@ def build_solution_graph(model: pyomo.Model, machine_id_to_name_map: dict[str, s
         match = machine_pattern.match(machine)
         if match:
             machine_id, = match.groups()
-            machine_name = machine_id_to_name_map[machine_id]
-            machine_node = MachineNode(id = machine, machine_name = machine_name, quantity = quantity)
+            recipe = machine_id_to_recipe_map[machine_id]
+            machine_name = recipe.machine_name
+            machine_node = MachineNode(
+                id = machine,
+                machine_name = machine_name,
+                quantity = quantity,
+                duration = recipe.duration
+            )
             machine_nodes[machine_id] = machine_node
             link_name_to_node_map[machine] = machine_node
             graph.nodes.append(machine_node)
@@ -374,9 +382,12 @@ def draw(graph: SolutionGraph):
         ])
 
         machine_table = ''.join([
-            '<table border="0" cellspacing="0">',
+            '<table border="0" bgcolor="white" cellspacing="0">',
             '<tr>',
-            f'<td border="0" bgcolor="white" PORT="{machine.id}">{machine.machine_name} x{'{:,.2f}'.format(machine.quantity)}</td>',
+            f'<td border="0" PORT="{machine.id}">{'{:,.2f}'.format(machine.quantity)}x {machine.machine_name}</td>',
+            '</tr>',
+            '<tr>',
+            f'<td border="0">cycle: {'{:,.2f}'.format(machine.duration)}s</td>'
             '</tr>',
             '</table>',
         ])
