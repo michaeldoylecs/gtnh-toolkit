@@ -501,6 +501,25 @@ def draw(graph: SolutionGraph):
 
     # Draw edges connected to ItemNodes
     for item_node_id, item_edges in itemNodeConnectedEdges.items():
+        # If a node has only 2 connected edges, the node is redundant and the 2 edges
+        # can be combined into 1.
+        if len(item_edges) == 2:
+            start = item_edges[0].start
+            end = item_edges[1].end
+
+            if type(start) is ItemNode:
+                start = item_edges[1].start
+                end = item_edges[0].end
+
+            combined_edge = ItemDirectedEdge(
+                start = start,
+                end = end,
+                item = item_edges[0].item,
+                quantity = item_edges[0].quantity,
+            )
+            edges_without_item_nodes.append(combined_edge)
+            continue
+
         edge_color = next(EDGE_COLOR_ITERATOR)
         with dot.subgraph(name='regular') as subgraph:
             subgraph.node(item_node_id, **{
