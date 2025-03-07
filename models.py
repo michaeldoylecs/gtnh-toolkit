@@ -22,14 +22,6 @@ class Recipe:
     eu_per_gametick: int
 
 @dataclass(frozen=True)
-class MachineRecipe:
-    machine_name: str
-    inputs: list[ItemStack]
-    outputs: list[ItemStack]
-    duration: GameTicks
-    eu_per_gametick: int
-
-@dataclass(frozen=True)
 class TargetRate:
     item: Item
     quantity_per_second: float
