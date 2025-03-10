@@ -386,7 +386,7 @@ def draw(graph: SolutionGraph):
             f'<td border="0" PORT="{machine.id}">{'{:,.2f}'.format(machine.quantity)}x {machine.machine_name}</td>',
             '</tr>',
             '<tr>',
-            f'<td border="0">cycle: {'{:,.2f}'.format(machine.duration)}s</td>'
+            f'<td border="0">cycle: {'{:,.2f}'.format(machine.duration / 20)}s</td>'
             '</tr>',
             '</table>',
         ])
