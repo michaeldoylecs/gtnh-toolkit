@@ -12,11 +12,11 @@ The design is heavily inspired by [gtnh-flow](https://github.com/OrderedSet86/gt
 ![Screenshot of an example output showing a diagram for creating Hydrogen Sulfide.](./imgs/hydrogen_sulfide.png)
 
 ## Usage
-I use `uv` for managing dependencies and python environments, so instructions will use `uv` for commands. If you use something else, use the equivalent substitutions to install dependencies and run the program.
+I use `uv` for managing dependencies and python environments, so instructions will use `uv` for commands. If you use something else, use the equivalent commands to install dependencies and run the program.
 
 0) Install the Cbc dependency listed in the dependency section of this file. 
 
-1) Write a project file that specifies all recipes to be considered as well as your desired item output rate.
+1) Write a factory config file that specifies all recipes to be considered as well as your desired item output rate.
 Currently, JSON and YAML files are supported.
 
 ### Example project file
@@ -44,12 +44,7 @@ targets:
   hydrogen sulfide: 250 # per second
 ```
 
-2) Change the file being loaded in `main.py` to reference your new project file:
-```python
-factory_config = load_factory_config("./.input/hydrogen_sulfide.yaml")
-```
-
-3) Run the program with `uv run main.py` to generate your output. It will be saved in the `output` folder.
+3) Run the program with `uv run main.py <factory_config_path>` to generate your output. It will be saved in the `output` folder.
 
 ## Dependencies
 
