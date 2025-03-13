@@ -1,7 +1,7 @@
 # GTNH Toolkit
 
 > [!Warning]
-> This project is very much a work-in-progress. The project does not currently handle machine power usage or overclocking. If you decide to use it, please report any bugs, issues, or awkwardness as a GitHub issue.
+> This project is very much a work-in-progress. The project does not currently handle machine overclocking or other intricacies. If you decide to use it, please report any bugs, issues, or awkwardness as a GitHub issue.
 
 GTNH Toolkit is a tool for designing factories in the Minecraft modpack GregTech: New Horizons.
 It automatically balancing the inputs and outputs of a given set of recipes to
