@@ -9,7 +9,7 @@ achieve a desired output rate of a given item.
 
 The design is heavily inspired by [gtnh-flow](https://github.com/OrderedSet86/gtnh-flow).
 
-![Screenshot of an example output showing a diagram for creating Hydrogen Sulfide.](./imgs/hydrogen_sulfide.png)
+![Screenshot of an example output showing a diagram for creating Hydrogen Sulfide.](./imgs/naq_fuel_mk1.png)
 
 ## Usage
 I use `uv` for managing dependencies and python environments, so instructions will use `uv` for commands. If you use something else, use the equivalent commands to install dependencies and run the program.
