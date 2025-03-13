@@ -399,16 +399,20 @@ def draw(graph: SolutionGraph):
         ])
 
         machine_eu_amortized = applySISymbols(machine.recipe.eu_per_gametick * machine.quantity)
+        eu_per_machine = applySISymbols(machine.recipe.eu_per_gametick)
         machine_table = ''.join([
             '<table border="0" bgcolor="white" cellspacing="0">',
             '<tr>',
             f'<td border="0" PORT="{machine.id}">{'{:,.2f}'.format(machine.quantity)}x {machine.machine_name}</td>',
             '</tr>',
             '<tr>',
-            f'<td border="0">cycle: {'{:,.2f}'.format(machine.recipe.duration / 20)}s</td>'
+            f'<td border="0">Recipe time: {'{:,.2f}'.format(machine.recipe.duration / 20)}s</td>'
             '</tr>',
             '<tr>',
             f'<td border="0">EU Amortized: {machine_eu_amortized} EU/t</td>'
+            '</tr>',
+            '<tr>',
+            f'<td border="0">EU per Machine: {eu_per_machine} EU/t</td>'
             '</tr>',
             '</table>',
         ])
