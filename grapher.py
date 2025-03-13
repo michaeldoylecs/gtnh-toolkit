@@ -53,12 +53,12 @@ class SinkNode(Node):
 class MachineNode(Node):
     machine_name: str
     quantity: float
-    duration: float # Seconds
+    recipe: Recipe
 
-    def __init__(self, id: str, machine_name: str, quantity: float, duration: float):
+    def __init__(self, id: str, machine_name: str, quantity: float, recipe: Recipe):
         self.machine_name = machine_name
         self.quantity = quantity
-        self.duration = duration
+        self.recipe = recipe
         super().__init__(id)
 
 class MachineInputNode(Node):
@@ -271,7 +271,7 @@ def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str,
                 id = machine,
                 machine_name = machine_name,
                 quantity = quantity,
-                duration = recipe.duration
+                recipe = recipe,
             )
             machine_nodes[machine_id] = machine_node
             link_name_to_node_map[machine] = machine_node
@@ -350,6 +350,24 @@ def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str,
 
 
 def draw(graph: SolutionGraph):
+    def applySISymbols(number: float) -> str:
+        suffixes = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y', 'R', 'Q']
+
+        # Cannot take the log10 of 0
+        if number == 0:
+            return '0'
+        
+        degree = int(math.floor(math.log10(math.fabs(number)) / 3))
+        
+        if degree < len(suffixes):
+            suffix = suffixes[degree]
+            scaled_number = float(number * math.pow(1000, -degree))
+        else:
+            suffix = suffixes[-1]
+            scaled_number = float(number * math.pow(1000, -(len(suffixes) - 1)))
+        
+        formatted_number = '{:,.2f}'.format(scaled_number)
+        return f'{formatted_number}{suffix}'
 
     def make_sources_table(sources: list[SourceNode]):
         table = ''.join([
@@ -380,13 +398,17 @@ def draw(graph: SolutionGraph):
             '</table>',
         ])
 
+        machine_eu_amortized = applySISymbols(machine.recipe.eu_per_gametick * machine.quantity)
         machine_table = ''.join([
             '<table border="0" bgcolor="white" cellspacing="0">',
             '<tr>',
             f'<td border="0" PORT="{machine.id}">{'{:,.2f}'.format(machine.quantity)}x {machine.machine_name}</td>',
             '</tr>',
             '<tr>',
-            f'<td border="0">cycle: {'{:,.2f}'.format(machine.duration / 20)}s</td>'
+            f'<td border="0">cycle: {'{:,.2f}'.format(machine.recipe.duration / 20)}s</td>'
+            '</tr>',
+            '<tr>',
+            f'<td border="0">EU Amortized: {machine_eu_amortized} EU/t</td>'
             '</tr>',
             '</table>',
         ])
