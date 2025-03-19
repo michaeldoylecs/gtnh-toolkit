@@ -7,6 +7,7 @@ import re
 import graphviz # type: ignore
 import pyomo.environ as pyomo # type: ignore
 
+import args
 from models import Item, Recipe, make_item
 
 EDGE_COLOR_ITERATOR = itertools.cycle([
@@ -157,38 +158,39 @@ def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str,
             machine, *_ = match.groups()
             machine_outputs.append((machine, k, v))
 
-    # Print filtered variables
-    print("\nMachines:")
-    for k, v in machines.items():
-        print(f"{k} = {v}")
+    # Print filtered variables if verbose mode is enabled
+    if args.is_verbose():
+        print("\nMachines:")
+        for k, v in machines.items():
+            print(f"{k} = {v}")
 
-    print("\nMachine inputs:")
-    for m, k, v in machine_inputs:
-        print(f"{m}: {k} = {v}")
-    
-    print("\nMachine outputs:")
-    for m, k, v in machine_outputs:
-        print(f"{m}: {k} = {v}")
-    
-    print("\nSources:")
-    for k, v in sources.items():
-        print(f"{k} = {v}")
-    
-    print("\nSource OUTs:")
-    for k, v in source_outs.items():
-        print(f"{k} = {v}")
+        print("\nMachine inputs:")
+        for m, k, v in machine_inputs:
+            print(f"{m}: {k} = {v}")
+        
+        print("\nMachine outputs:")
+        for m, k, v in machine_outputs:
+            print(f"{m}: {k} = {v}")
+        
+        print("\nSources:")
+        for k, v in sources.items():
+            print(f"{k} = {v}")
+        
+        print("\nSource OUTs:")
+        for k, v in source_outs.items():
+            print(f"{k} = {v}")
 
-    print("\nSinks:")
-    for k, v in sinks.items():
-        print(f"{k} = {v}")
-    
-    print("\nSink INs:")
-    for k, v in sink_ins.items():
-        print(f"{k} = {v}")
-    
-    print("\nLinks:")
-    for link in links:
-        print(link)
+        print("\nSinks:")
+        for k, v in sinks.items():
+            print(f"{k} = {v}")
+        
+        print("\nSink INs:")
+        for k, v in sink_ins.items():
+            print(f"{k} = {v}")
+        
+        print("\nLinks:")
+        for link in links:
+            print(link)
 
     # Map to relate the string name of a link within a link to its corresponding node.
     link_name_to_node_map: dict[str, Node] = {}
@@ -581,7 +583,6 @@ def draw(graph: SolutionGraph):
                 'style': 'invis',
                 'margin': '0',
             })
-
     try:
         dot.render('./output/test.gv', format='dot', quiet=False)
         dot.render('./output/test.gv', format='png', quiet=False)
