@@ -373,7 +373,7 @@ def draw(graph: SolutionGraph):
 
     def make_sources_table(sources: list[SourceNode]):
         table = ''.join([
-            '<<table border="0" cellspacing="0">',
+            '<<table border="0" cellspacing="0" bgcolor="lightgrey">',
             '<tr>',
             *[f'<td border="1" PORT="{source.id}">{source.item}</td>' for source in sources],
             '</tr>',
@@ -447,6 +447,18 @@ def draw(graph: SolutionGraph):
             '</table>>',
         ])
         return table
+    
+    def make_overview_table() -> str:
+        overview = ''.join([
+            '<<table border="0" cellpadding="0" cellspacing="0" bgcolor="white">',
+                '<tr>',
+                    '<td border="1" cellpadding="4" cellspacing="0">',
+                        '<b>Factory Overview</b>',
+                    '</td>',
+                '</tr>',
+            '</table>>',
+        ])
+        return overview
 
     # Make the graph
     dot = graphviz.Digraph(comment='GTNH-ToolKit')
@@ -462,11 +474,33 @@ def draw(graph: SolutionGraph):
     # Source Nodes
     sourcesMap: dict[str, SourceNode] = dict([(node.id, node) for node in graph.nodes if type(node) is SourceNode])
     with dot.subgraph(name='cluster_sources') as subgraph:
-        subgraph.attr(rank='source', color='lightgrey', style='filled', pad='0', margin='0')
+        subgraph.attr(rank='source', pad='0', margin='0', rankdir='LR', peripheries='0')
         subgraph.node('sources', make_sources_table(list(sourcesMap.values())), **{
             'shape': 'plain',
             'margin': '0',
+            'peripheries': '0',
         })
+    
+    # Add overview node separately
+    dot.node('overview', make_overview_table(), **{
+        'shape': 'plain',
+        'margin': '0',
+        'peripheries': '0',
+    })
+    
+    # Position overview to the right of sources using a horizontal layout
+    dot.attr(newrank='true')  # Enable newrank feature for better ranking
+    with dot.subgraph(name='cluster_top_row') as top_row:
+        top_row.attr(rank='source', peripheries='0')
+        # Use invisible nodes with the same names to control positioning
+        # without affecting the actual nodes
+        top_row.node('_sources', style='invis', width='0')
+        top_row.node('_overview', style='invis', width='0')
+        # Add invisible edge to position overview to the right of sources
+        top_row.edge('_sources', '_overview', style='invis', constraint='true', weight='100')
+        # Connect invisible nodes to real nodes to influence their positions
+        dot.edge('_sources', 'sources', style='invis', constraint='false')
+        dot.edge('_overview', 'overview', style='invis', constraint='false')
     
     # Sink Nodes
     sinksMap: dict[str, SinkNode] = dict([(node.id, node) for node in graph.nodes if type(node) is SinkNode])
