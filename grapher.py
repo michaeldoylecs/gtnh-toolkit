@@ -1,6 +1,7 @@
 import abc
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import reduce
 import itertools
 import math
 import re
@@ -355,9 +356,9 @@ def draw(graph: SolutionGraph):
     def applySISymbols(number: float) -> str:
         suffixes = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y', 'R', 'Q']
 
-        # Cannot take the log10 of 0
-        if number == 0:
-            return '0'
+        # Don't apply suffixes to small numbers
+        if abs(number) < 1000:
+            return '{:,.2f}'.format(number)
         
         degree = int(math.floor(math.log10(math.fabs(number)) / 3))
         
@@ -448,12 +449,80 @@ def draw(graph: SolutionGraph):
         ])
         return table
     
-    def make_overview_table() -> str:
-        overview = ''.join([
-            '<<table border="0" cellpadding="0" cellspacing="0" bgcolor="white">',
+    def make_overview_table(sources: list[SourceNode], sinks: list[SinkNode], machines: list[MachineNode]) -> str:
+        colors = {
+            'red': '#c93420',
+            'white': 'white',
+            'green': '#25ab07',
+        }
+
+        input_rows = list(map(
+            lambda s: ''.join([
                 '<tr>',
-                    '<td border="1" cellpadding="4" cellspacing="0">',
-                        '<b>Factory Overview</b>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="LEFT">',
+                        f'<FONT color="white">{s.item}</FONT>',
+                    '</td>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="RIGHT">',
+                        f'<FONT color="{colors['red']}">{applySISymbols(s.quantity)}/s</FONT>',
+                    '</td>',
+                '</tr>',
+            ]), 
+            sorted(sources, key=lambda s: s.quantity)
+        ))
+
+        output_rows = list(map(
+            lambda s: ''.join([
+                '<tr>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="LEFT">',
+                        f'<FONT color="white">{s.item}</FONT>',
+                    '</td>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="RIGHT">',
+                        f'<FONT color="{colors['green']}">{applySISymbols(s.quantity)}/s</FONT>',
+                    '</td>',
+                '</tr>',
+            ]), 
+            sorted(sinks, key=lambda s: s.quantity, reverse=True)
+        ))
+
+        machine_count = reduce(lambda sum, m: sum + math.ceil(m.quantity), machines, 0)
+        average_eu_per_tick_in = -1.0 * reduce(lambda sum, m: sum + m.quantity * m.recipe.eu_per_gametick, machines, 0.0)
+
+        overview = ''.join([
+            '<<table border="1" cellpadding="0" cellspacing="0" bgcolor="#043742">',
+                '<tr>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="LEFT">',
+                        '<FONT color="white"><b>Input</b></FONT>',
+                    '</td>',
+                '</tr>',
+                '<hr/>',
+                *input_rows,
+                '<tr>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="LEFT">',
+                        '<FONT color="white"><b>Output</b></FONT>',
+                    '</td>',
+                '</tr>',
+                '<hr/>',
+                *output_rows,
+                '<tr>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="LEFT">',
+                        '<FONT color="white"><b>Energy</b></FONT>',
+                    '</td>',
+                '</tr>',
+                '<hr/>',
+                '<tr>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="left">',
+                        '<FONT color="white">Input EU/t</FONT>',
+                    '</td>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="right">',
+                        f'<FONT color="{colors['red']}">{applySISymbols(average_eu_per_tick_in)}</FONT>',
+                    '</td>',
+                '</tr>',
+                '<tr>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="left">',
+                        f'<FONT color="{colors["white"]}">Machine Count</FONT>',
+                    '</td>',
+                    '<td border="0" cellpadding="4" cellspacing="0" align="right">',
+                        f'<FONT color="{colors["green"]}">{str(machine_count)}</FONT>',
                     '</td>',
                 '</tr>',
             '</table>>',
@@ -480,27 +549,6 @@ def draw(graph: SolutionGraph):
             'margin': '0',
             'peripheries': '0',
         })
-    
-    # Add overview node separately
-    dot.node('overview', make_overview_table(), **{
-        'shape': 'plain',
-        'margin': '0',
-        'peripheries': '0',
-    })
-    
-    # Position overview to the right of sources using a horizontal layout
-    dot.attr(newrank='true')  # Enable newrank feature for better ranking
-    with dot.subgraph(name='cluster_top_row') as top_row:
-        top_row.attr(rank='source', peripheries='0')
-        # Use invisible nodes with the same names to control positioning
-        # without affecting the actual nodes
-        top_row.node('_sources', style='invis', width='0')
-        top_row.node('_overview', style='invis', width='0')
-        # Add invisible edge to position overview to the right of sources
-        top_row.edge('_sources', '_overview', style='invis', constraint='true', weight='100')
-        # Connect invisible nodes to real nodes to influence their positions
-        dot.edge('_sources', 'sources', style='invis', constraint='false')
-        dot.edge('_overview', 'overview', style='invis', constraint='false')
     
     # Sink Nodes
     sinksMap: dict[str, SinkNode] = dict([(node.id, node) for node in graph.nodes if type(node) is SinkNode])
@@ -617,6 +665,29 @@ def draw(graph: SolutionGraph):
                 'style': 'invis',
                 'margin': '0',
             })
+
+    # Add overview node
+    dot.node('overview', make_overview_table(list(sourcesMap.values()), list(sinksMap.values()), list(machineMap.values())), **{
+        'shape': 'plain',
+        'margin': '0',
+        'peripheries': '0',
+    })
+    
+    # Position overview to the right of sources using a horizontal layout
+    dot.attr(newrank='true')  # Enable newrank feature for better ranking
+    with dot.subgraph(name='cluster_top_row') as top_row:
+        top_row.attr(rank='source', peripheries='0')
+        # Use invisible nodes with the same names to control positioning
+        # without affecting the actual nodes
+        top_row.node('_sources', style='invis', width='0')
+        top_row.node('_overview', style='invis', width='0')
+        # Add invisible edge to position overview to the right of sources
+        top_row.edge('_sources', '_overview', style='invis', constraint='true', weight='100')
+        # Connect invisible nodes to real nodes to influence their positions
+        dot.edge('_sources', 'sources', style='invis', constraint='false')
+        dot.edge('_overview', 'overview', style='invis', constraint='false')
+
+    # Render
     try:
         dot.render('./output/test.gv', format='dot', quiet=False)
         dot.render('./output/test.gv', format='png', quiet=False)
