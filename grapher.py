@@ -9,6 +9,7 @@ import graphviz # type: ignore
 import pyomo.environ as pyomo # type: ignore
 
 import args
+from machines.BasicMachine import MachineRecipe
 from models import Item, Recipe, make_item
 
 EDGE_COLOR_ITERATOR = itertools.cycle([
@@ -55,9 +56,9 @@ class SinkNode(Node):
 class MachineNode(Node):
     machine_name: str
     quantity: float
-    recipe: Recipe
+    recipe: MachineRecipe
 
-    def __init__(self, id: str, machine_name: str, quantity: float, recipe: Recipe):
+    def __init__(self, id: str, machine_name: str, quantity: float, recipe: MachineRecipe):
         self.machine_name = machine_name
         self.quantity = quantity
         self.recipe = recipe
@@ -119,7 +120,7 @@ class SolutionGraph:
     nodes: list[Node] = field(default_factory=list)
     edges: list[DirectedEdge] = field(default_factory=list)
 
-def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str, Recipe]) -> SolutionGraph:
+def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str, MachineRecipe]) -> SolutionGraph:
     graph = SolutionGraph()
 
     # Extract variable names and values

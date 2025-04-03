@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from functools import cache
 from typing import NewType
 
+from machines.BasicMachine import MachineRecipe
+
 GameTicks = NewType('GameTicks', int)
 
 @dataclass(frozen=True)
@@ -22,13 +24,21 @@ class Recipe:
     eu_per_gametick: int
 
 @dataclass(frozen=True)
+class OverclockedRecipe:
+    machine_name: str
+    inputs: list[ItemStack]
+    outputs: list[ItemStack]
+    duration: GameTicks
+    eu_per_gametick: int
+
+@dataclass(frozen=True)
 class TargetRate:
     item: Item
     quantity_per_second: float
 
 @dataclass(frozen=True)
 class FactoryConfig:
-    recipes: list[Recipe]
+    recipes: list[MachineRecipe]
     targets: list[TargetRate]
 
 @cache

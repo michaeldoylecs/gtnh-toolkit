@@ -1,17 +1,18 @@
 from collections import defaultdict
 import pyomo.environ as pyomo # type: ignore
 from pyomo.opt import SolverResults # type: ignore
-from models import Item, Recipe, TargetRate
+from machines.BasicMachine import MachineRecipe
+from models import Item, TargetRate
 
 def solve(
-        recipes: list[Recipe],
+        recipes: list[MachineRecipe],
         target: TargetRate,
         solver = pyomo.SolverFactory('cbc'),
         model = pyomo.ConcreteModel()
-        ) -> tuple[pyomo.Model, SolverResults, dict[str, Recipe]]:
+        ) -> tuple[pyomo.Model, SolverResults, dict[str, MachineRecipe]]:
     machine_index = 0
     machines: list[str] = [] 
-    machine_id_to_recipe_map: dict[str, Recipe] = {}
+    machine_id_to_recipe_map: dict[str, MachineRecipe] = {}
     machine_outputs: set[Item] = set()
 
     item_out_links: dict[Item, list[str]] = defaultdict(list)
