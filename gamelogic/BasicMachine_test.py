@@ -12,14 +12,14 @@ class TestVoltageTier(unittest.TestCase):
     
     def test_from_int(self):
         # Test the from_int class method
-        self.assertEqual(VoltageTier.from_int(0), VoltageTier.ULV)
-        self.assertEqual(VoltageTier.from_int(1), VoltageTier.LV)
-        self.assertEqual(VoltageTier.from_int(5), VoltageTier.IV)
-        self.assertEqual(VoltageTier.from_int(14), VoltageTier.MAX)
+        self.assertEqual(VoltageTier.from_tier_num(0), VoltageTier.ULV)
+        self.assertEqual(VoltageTier.from_tier_num(1), VoltageTier.LV)
+        self.assertEqual(VoltageTier.from_tier_num(5), VoltageTier.IV)
+        self.assertEqual(VoltageTier.from_tier_num(14), VoltageTier.MAX)
         
         # Test boundary conditions
-        self.assertEqual(VoltageTier.from_int(-1), VoltageTier.ULV)  # Should clamp to min
-        self.assertEqual(VoltageTier.from_int(20), VoltageTier.MAX)  # Should clamp to max
+        self.assertEqual(VoltageTier.from_tier_num(-1), VoltageTier.ULV)  # Should clamp to min
+        self.assertEqual(VoltageTier.from_tier_num(20), VoltageTier.MAX)  # Should clamp to max
     
     def test_string_representation(self):
         # Test the string representation
