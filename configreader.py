@@ -4,7 +4,7 @@ import json
 from pydantic import ValidationError
 import yaml
 
-from gamelogic.BasicMachine import BasicMachineRecipe, GameTicks, MachineRecipe, VoltageTier
+from gamelogic.BasicMachine import BasicMachineRecipe, GameTicks, MachineRecipe, VoltageTier, Voltage
 from gamelogic.Items import make_itemstack
 from models import FactoryConfig, TargetRate, make_target
 import os
