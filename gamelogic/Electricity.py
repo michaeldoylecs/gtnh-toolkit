@@ -82,3 +82,5 @@ class Voltage:
     
     def __repr__(self):
         return f"Voltage({self.voltage}, {self.tier})"
+
+    # Add the necessary methods to use Voltage in arithmetic AI!
