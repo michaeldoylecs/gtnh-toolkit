@@ -1,4 +1,4 @@
-# Write tests to check the correctness of VoltageTier and Voltage from the BasicMachine.py file AI!
+# Write tests to check the correctness of VoltageTier and Voltage from the BasicMachine.py file
 import unittest
 from gamelogic.BasicMachine import VoltageTier, Voltage
 
@@ -26,6 +26,20 @@ class TestVoltageTier(unittest.TestCase):
         self.assertEqual(str(VoltageTier.ULV), "ULV")
         self.assertEqual(str(VoltageTier.MV), "MV")
         self.assertEqual(str(VoltageTier.MAX), "MAX")
+    
+    def test_from_name(self):
+        # Test the from_name class method
+        self.assertEqual(VoltageTier.from_name("ULV"), VoltageTier.ULV)
+        self.assertEqual(VoltageTier.from_name("MV"), VoltageTier.MV)
+        self.assertEqual(VoltageTier.from_name("MAX"), VoltageTier.MAX)
+        
+        # Test case insensitivity
+        self.assertEqual(VoltageTier.from_name("ulv"), VoltageTier.ULV)
+        self.assertEqual(VoltageTier.from_name("mV"), VoltageTier.MV)
+        
+        # Test invalid name
+        with self.assertRaises(ValueError):
+            VoltageTier.from_name("NotATier")
 
 class TestVoltage(unittest.TestCase):
     def test_initialization(self):

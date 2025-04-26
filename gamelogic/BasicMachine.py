@@ -29,7 +29,23 @@ class VoltageTier(Enum):
         tier_num = max(0, min(14, tier_num))
         return list(cls)[tier_num]
     
-    # Add method to get enum from string name AI!
+    @classmethod
+    def from_name(cls, name: str) -> 'VoltageTier':
+        """Get a VoltageTier enum from its string name.
+        
+        Args:
+            name: The name of the voltage tier (e.g., 'ULV', 'MV', 'HV')
+        
+        Returns:
+            The corresponding VoltageTier enum value
+            
+        Raises:
+            ValueError: If the name doesn't match any VoltageTier
+        """
+        try:
+            return cls[name.upper()]
+        except KeyError:
+            raise ValueError(f"No VoltageTier with name '{name}'")
 
     def __str__(self) -> str:
         return self.name
