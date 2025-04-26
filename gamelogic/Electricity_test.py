@@ -88,5 +88,123 @@ class TestVoltage(unittest.TestCase):
         v = Voltage(30)
         self.assertEqual(repr(v), f"Voltage(30, {VoltageTier.LV})")
 
+    def test_addition(self):
+        # Test addition with another Voltage
+        v1 = Voltage(32)
+        v2 = Voltage(128)
+        result = v1 + v2
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 160)
+        
+        # Test addition with an integer
+        result = v1 + 100
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 132)
+        
+        # Test right-side addition
+        result = 100 + v1
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 132)
+
+    def test_subtraction(self):
+        # Test subtraction with another Voltage
+        v1 = Voltage(128)
+        v2 = Voltage(32)
+        result = v1 - v2
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 96)
+        
+        # Test subtraction with an integer
+        result = v1 - 50
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 78)
+        
+        # Test right-side subtraction
+        result = 200 - v2
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 168)
+        
+        # Test that negative results are clamped to 0
+        result = v2 - v1
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 0)
+
+    def test_multiplication(self):
+        # Test multiplication with an integer
+        v = Voltage(32)
+        result = v * 4
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 128)
+        
+        # Test right-side multiplication
+        result = 4 * v
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 128)
+        
+        # Test multiplication with a float
+        result = v * 2.5
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 80)
+
+    def test_division(self):
+        # Test division with another Voltage
+        v1 = Voltage(128)
+        v2 = Voltage(32)
+        result = v1 / v2
+        self.assertIsInstance(result, float)
+        self.assertEqual(result, 4.0)
+        
+        # Test division with an integer
+        result = v1 / 4
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 32)
+        
+        # Test right-side division
+        result = 256 / v2
+        self.assertIsInstance(result, Voltage)
+        self.assertEqual(result.voltage, 8)
+
+    def test_comparison(self):
+        v1 = Voltage(32)
+        v2 = Voltage(128)
+        v3 = Voltage(32)
+        
+        # Test less than
+        self.assertTrue(v1 < v2)
+        self.assertFalse(v2 < v1)
+        self.assertFalse(v1 < v3)
+        self.assertTrue(v1 < 100)
+        
+        # Test less than or equal
+        self.assertTrue(v1 <= v2)
+        self.assertTrue(v1 <= v3)
+        self.assertFalse(v2 <= v1)
+        self.assertTrue(v1 <= 32)
+        
+        # Test greater than
+        self.assertTrue(v2 > v1)
+        self.assertFalse(v1 > v2)
+        self.assertFalse(v1 > v3)
+        self.assertTrue(v2 > 100)
+        
+        # Test greater than or equal
+        self.assertTrue(v2 >= v1)
+        self.assertTrue(v1 >= v3)
+        self.assertFalse(v1 >= v2)
+        self.assertTrue(v1 >= 32)
+
+    def test_conversion(self):
+        v = Voltage(128)
+        
+        # Test int conversion
+        result = int(v)
+        self.assertIsInstance(result, int)
+        self.assertEqual(result, 128)
+        
+        # Test float conversion
+        result = float(v)
+        self.assertIsInstance(result, float)
+        self.assertEqual(result, 128.0)
+
 if __name__ == '__main__':
     unittest.main()
