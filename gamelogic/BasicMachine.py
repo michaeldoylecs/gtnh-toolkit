@@ -1,5 +1,5 @@
 
-from enum import Enum, auto
+from enum import Enum
 import math
 from typing import NewType
 
@@ -8,7 +8,8 @@ from gamelogic.Items import ItemStack
 GameTicks = NewType('GameTicks', int)
 
 class VoltageTier(Enum):
-    ULV = 1
+    ULV = 0
+    LV = 1
     MV = 2
     HV = 3
     EV = 4
@@ -25,8 +26,8 @@ class VoltageTier(Enum):
     
     @classmethod
     def from_int(cls, tier_num: int) -> 'VoltageTier':
-        tier_num = max(1, min(14, tier_num))
-        return list(cls)[tier_num - 1]
+        tier_num = max(0, min(14, tier_num))
+        return list(cls)[tier_num]
     
     def __str__(self) -> str:
         return self.name
@@ -42,13 +43,13 @@ class Voltage:
             return VoltageTier.ULV
         
         # Calculate tier based on voltage
-        tier_num = min(14, max(1, math.ceil(math.log(self.voltage / 8, 4))))
+        tier_num = min(14, max(0, math.ceil(math.log(self.voltage / 8, 4))))
         return VoltageTier.from_int(tier_num)
     
     @classmethod
     def from_tier(cls, tier: VoltageTier) -> 'Voltage':
         # Calculate voltage from tier
-        voltage = 8 * (4 ** (tier.value - 1))
+        voltage = 8 * (4 ** (tier.value))
         return cls(voltage)
     
     def __eq__(self, other):
