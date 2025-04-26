@@ -29,6 +29,8 @@ class VoltageTier(Enum):
         tier_num = max(0, min(14, tier_num))
         return list(cls)[tier_num]
     
+    # Add method to get enum from string name AI!
+
     def __str__(self) -> str:
         return self.name
 
