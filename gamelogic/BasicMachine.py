@@ -15,7 +15,7 @@ class Voltage:
     def tier(self) -> int:
         # Special case for 0 voltage
         if self.voltage == 0:
-            return 1  # ULV tier
+            return 1  # ULV tier is the same as LV
         
         # Calculate tier based on voltage
         return min(14, max(1, math.ceil(math.log(self.voltage / 8, 4))))
