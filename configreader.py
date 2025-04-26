@@ -47,12 +47,13 @@ def load_factory_config(file_path: str) -> Optional[FactoryConfig]:
     for raw_recipe in parsed_input.recipes:
         # TODO: Inputs and Outputs should be floats, not ints. This is to accommodate chance outputs
         name = raw_recipe.m
-        tier = VoltageTier[raw_recipe.tier.upper()]
+        voltage_tier = VoltageTier[raw_recipe.tier.upper()]
+        machine_voltage = Voltage.from_tier(voltage_tier)
         inputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.inputs.items()]
         outputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.outputs.items()]
         duration = GameTicks(raw_recipe.dur)
         eu_per_gametick = raw_recipe.eut
-        recipe = BasicMachineRecipe(name, tier, inputs, outputs, duration, eu_per_gametick)
+        recipe = BasicMachineRecipe(name, machine_voltage, inputs, outputs, duration, eu_per_gametick)
         recipes.append(recipe)
     
     targets: list[TargetRate] = []
