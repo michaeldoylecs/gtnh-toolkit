@@ -58,7 +58,6 @@ class Voltage:
         return f"Voltage({self.voltage}, {self.label})"
 
 
-# Replace the above Voltage enums and functions with a dedicated Voltage class that that stores an integer voltage and returns a string label based on the voltage number AI!
 
 
 class MachineRecipe():
@@ -82,7 +81,7 @@ class BasicMachineRecipe(MachineRecipe):
             eu_per_gametick: int
     ):
         self.machine_name = machine_name
-        self.machine_voltage_tier = machine_voltage_tier
+        self.machine_voltage = machine_voltage
         self.inputs = inputs
         self.outputs = outputs
 
@@ -109,6 +108,6 @@ class BasicMachineRecipe(MachineRecipe):
         speed_overclock = OVERCLOCK_SPEED_FACTOR**tier_ratio
         power_overclock = OVERCLOCK_POWER_FACTOR**tier_ratio
 
-        recipe_time = GameTicks(math.ceil(duration * speed_overclock))
-        recipe_cost = eu_per_gametick * power_overclock
+        recipe_time = GameTicks(math.ceil(duration / speed_overclock))
+        recipe_cost = int(eu_per_gametick * power_overclock)
         return (recipe_time, recipe_cost)
