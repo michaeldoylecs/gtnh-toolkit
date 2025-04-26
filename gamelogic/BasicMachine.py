@@ -1,5 +1,5 @@
 
-from enum import Enum
+from enum import Enum, auto
 import math
 from typing import NewType
 
@@ -7,46 +7,48 @@ from gamelogic.Items import ItemStack
 
 GameTicks = NewType('GameTicks', int)
 
+class VoltageTier(Enum):
+    ULV = 1
+    MV = 2
+    HV = 3
+    EV = 4
+    IV = 5
+    LUV = 6
+    ZPM = 7
+    UV = 8
+    UHV = 9
+    UEV = 10
+    UIV = 11
+    UMV = 12
+    UXV = 13
+    MAX = 14
+    
+    @classmethod
+    def from_int(cls, tier_num: int) -> 'VoltageTier':
+        tier_num = max(1, min(14, tier_num))
+        return list(cls)[tier_num - 1]
+    
+    def __str__(self) -> str:
+        return self.name
+
 class Voltage:
     def __init__(self, voltage: int):
         self.voltage = max(0, voltage)  # Ensure voltage is non-negative
     
     @property
-    def tier(self) -> int:
+    def tier(self) -> VoltageTier:
         # Special case for 0 voltage
         if self.voltage == 0:
-            return 1  # ULV tier is the same as LV
+            return VoltageTier.ULV
         
         # Calculate tier based on voltage
-        return min(14, max(1, math.ceil(math.log(self.voltage / 8, 4))))
-    
-    @property
-    def label(self) -> str:
-        tier_labels = {
-            1: "ULV",
-            2: "MV",
-            3: "HV",
-            4: "EV",
-            5: "IV",
-            6: "LUV",
-            7: "ZPM",
-            8: "UV",
-            9: "UHV",
-            10: "UEV",
-            11: "UIV",
-            12: "UMV",
-            13: "UXV",
-            14: "MAX"
-        }
-        return tier_labels.get(self.tier, "UNDEFINED")
+        tier_num = min(14, max(1, math.ceil(math.log(self.voltage / 8, 4))))
+        return VoltageTier.from_int(tier_num)
     
     @classmethod
-    def from_tier(cls, tier: int) -> 'Voltage':
-        if tier <= 0:
-            return cls(0)
-        
+    def from_tier(cls, tier: VoltageTier) -> 'Voltage':
         # Calculate voltage from tier
-        voltage = 8 * (4 ** (tier - 1))
+        voltage = 8 * (4 ** (tier.value - 1))
         return cls(voltage)
     
     def __eq__(self, other):
@@ -55,7 +57,7 @@ class Voltage:
         return False
     
     def __repr__(self):
-        return f"Voltage({self.voltage}, {self.label})"
+        return f"Voltage({self.voltage}, {self.tier})"
 
 
 
@@ -86,7 +88,7 @@ class BasicMachineRecipe(MachineRecipe):
         self.outputs = outputs
 
         recipe_time, recipe_cost = self.__apply_standard_overclock(
-            self.machine_voltage_tier,
+            self.machine_voltage,
             duration,
             eu_per_gametick
         )
@@ -104,7 +106,7 @@ class BasicMachineRecipe(MachineRecipe):
         OVERCLOCK_POWER_FACTOR = 4
 
         recipe_voltage = Voltage(eu_per_gametick)
-        tier_ratio = recipe_voltage.tier / machine_voltage.tier
+        tier_ratio = recipe_voltage.tier.value / machine_voltage.tier.value
         speed_overclock = OVERCLOCK_SPEED_FACTOR**tier_ratio
         power_overclock = OVERCLOCK_POWER_FACTOR**tier_ratio
 
