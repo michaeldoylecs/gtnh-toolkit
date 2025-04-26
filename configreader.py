@@ -4,8 +4,9 @@ import json
 from pydantic import ValidationError
 import yaml
 
-from machines.BasicMachine import BasicMachineRecipe, MachineRecipe, VoltageTier
-from models import FactoryConfig, GameTicks, TargetRate, make_itemstack, make_target
+from gamelogic.BasicMachine import BasicMachineRecipe, GameTicks, MachineRecipe, VoltageTier
+from gamelogic.Items import make_itemstack
+from models import FactoryConfig, TargetRate, make_target
 import os
 
 @pdataclass
@@ -46,7 +47,7 @@ def load_factory_config(file_path: str) -> Optional[FactoryConfig]:
     for raw_recipe in parsed_input.recipes:
         # TODO: Inputs and Outputs should be floats, not ints. This is to accommodate chance outputs
         name = raw_recipe.m
-        tier = VoltageTier(raw_recipe.tier.upper())
+        tier = VoltageTier[raw_recipe.tier.upper()]
         inputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.inputs.items()]
         outputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.outputs.items()]
         duration = GameTicks(raw_recipe.dur)

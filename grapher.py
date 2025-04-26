@@ -9,8 +9,8 @@ import graphviz # type: ignore
 import pyomo.environ as pyomo # type: ignore
 
 import args
-from machines.BasicMachine import MachineRecipe
-from models import Item, Recipe, make_item
+from gamelogic.BasicMachine import MachineRecipe
+from models import Item, make_item
 
 EDGE_COLOR_ITERATOR = itertools.cycle([
     '#b58900', # 'yellow'
