@@ -83,4 +83,78 @@ class Voltage:
     def __repr__(self):
         return f"Voltage({self.voltage}, {self.tier})"
 
-    # Add the necessary methods to use Voltage in arithmetic AI!
+    def __add__(self, other):
+        if isinstance(other, Voltage):
+            return Voltage(self.voltage + other.voltage)
+        elif isinstance(other, (int, float)):
+            return Voltage(self.voltage + int(other))
+        return NotImplemented
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        if isinstance(other, Voltage):
+            return Voltage(self.voltage - other.voltage)
+        elif isinstance(other, (int, float)):
+            return Voltage(self.voltage - int(other))
+        return NotImplemented
+
+    def __rsub__(self, other):
+        if isinstance(other, (int, float)):
+            return Voltage(int(other) - self.voltage)
+        return NotImplemented
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            return Voltage(int(self.voltage * other))
+        return NotImplemented
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __truediv__(self, other):
+        if isinstance(other, Voltage):
+            return self.voltage / other.voltage
+        elif isinstance(other, (int, float)):
+            return Voltage(int(self.voltage / other))
+        return NotImplemented
+
+    def __rtruediv__(self, other):
+        if isinstance(other, (int, float)):
+            return Voltage(int(other / self.voltage))
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, Voltage):
+            return self.voltage < other.voltage
+        elif isinstance(other, (int, float)):
+            return self.voltage < other
+        return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, Voltage):
+            return self.voltage <= other.voltage
+        elif isinstance(other, (int, float)):
+            return self.voltage <= other
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, Voltage):
+            return self.voltage > other.voltage
+        elif isinstance(other, (int, float)):
+            return self.voltage > other
+        return NotImplemented
+
+    def __ge__(self, other):
+        if isinstance(other, Voltage):
+            return self.voltage >= other.voltage
+        elif isinstance(other, (int, float)):
+            return self.voltage >= other
+        return NotImplemented
+
+    def __int__(self):
+        return self.voltage
+
+    def __float__(self):
+        return float(self.voltage)
