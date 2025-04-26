@@ -7,55 +7,55 @@ from gamelogic.Items import ItemStack
 
 GameTicks = NewType('GameTicks', int)
 
-class VoltageTier(Enum):
-    UNDEFINED = -1
-    ULV = 1
-    LV  = 1
-    MV  = 2
-    HV  = 3
-    EV  = 4
-    IV  = 5
-    LUV = 6
-    ZPM = 7
-    UV  = 8
-    UHV = 9
-    UEV = 10
-    UIV = 11
-    UMV = 12
-    UXV = 13
-    MAX = 14
-
-
-class VoltageLabel(Enum):
-    UNDEFINED = -1
-    ULV = 8
-    LV  = 32
-    MV  = 128
-    HV  = 512
-    EV  = 2048
-    IV  = 8192
-    LUV = 32768
-    ZPM = 131072
-    UV  = 524288
-    UHV = 2097152
-    UEV = 8388608
-    UIV = 33554432
-    UMV = 134217728
-    UXV = 536870912
-    MAX = 2147483648
-
-
-def get_voltage_tier(voltage: int) -> VoltageTier:
-    # Negative voltages are invalid.
-    if voltage < 0:
-        return VoltageTier.UNDEFINED
-  
-    # Special case, because we cannot take the log of 0.
-    if voltage == 0:
-        return VoltageTier.ULV
-
-    tier_num = math.ceil(math.log(voltage / 8, 4))
-    return VoltageTier(tier_num)
+class Voltage:
+    def __init__(self, voltage: int):
+        self.voltage = max(0, voltage)  # Ensure voltage is non-negative
+    
+    @property
+    def tier(self) -> int:
+        # Special case for 0 voltage
+        if self.voltage == 0:
+            return 1  # ULV tier
+        
+        # Calculate tier based on voltage
+        return min(14, max(1, math.ceil(math.log(self.voltage / 8, 4))))
+    
+    @property
+    def label(self) -> str:
+        tier_labels = {
+            1: "ULV",
+            2: "MV",
+            3: "HV",
+            4: "EV",
+            5: "IV",
+            6: "LUV",
+            7: "ZPM",
+            8: "UV",
+            9: "UHV",
+            10: "UEV",
+            11: "UIV",
+            12: "UMV",
+            13: "UXV",
+            14: "MAX"
+        }
+        return tier_labels.get(self.tier, "UNDEFINED")
+    
+    @classmethod
+    def from_tier(cls, tier: int) -> 'Voltage':
+        if tier <= 0:
+            return cls(0)
+        
+        # Calculate voltage from tier
+        voltage = 8 * (4 ** (tier - 1))
+        return cls(voltage)
+    
+    def __eq__(self, other):
+        if isinstance(other, Voltage):
+            return self.voltage == other.voltage
+        return False
+    
+    def __repr__(self):
+        return f"Voltage({self.voltage}, {self.label})"
 
 
 # Replace the above Voltage enums and functions with a dedicated Voltage class that that stores an integer voltage and returns a string label based on the voltage number AI!
@@ -63,7 +63,7 @@ def get_voltage_tier(voltage: int) -> VoltageTier:
 
 class MachineRecipe():
     machine_name: str
-    machine_voltage_tier: VoltageTier
+    machine_voltage: Voltage
     inputs: list[ItemStack]
     outputs: list[ItemStack]
     duration: GameTicks
@@ -75,7 +75,7 @@ class BasicMachineRecipe(MachineRecipe):
     def __init__(
             self,
             machine_name: str,
-            machine_voltage_tier: VoltageTier,
+            machine_voltage: Voltage,
             inputs: list[ItemStack],
             outputs: list[ItemStack],
             duration: GameTicks,
@@ -97,15 +97,15 @@ class BasicMachineRecipe(MachineRecipe):
 
     def __apply_standard_overclock(
             self,
-            machine_tier: VoltageTier,
+            machine_voltage: Voltage,
             duration: GameTicks,
             eu_per_gametick: int,
     ) -> tuple[GameTicks, int]:
         OVERCLOCK_SPEED_FACTOR = 2.0
         OVERCLOCK_POWER_FACTOR = 4
 
-        recipe_tier = get_voltage_tier(eu_per_gametick)
-        tier_ratio = recipe_tier.value / machine_tier.value
+        recipe_voltage = Voltage(eu_per_gametick)
+        tier_ratio = recipe_voltage.tier / machine_voltage.tier
         speed_overclock = OVERCLOCK_SPEED_FACTOR**tier_ratio
         power_overclock = OVERCLOCK_POWER_FACTOR**tier_ratio
 
