@@ -5,38 +5,35 @@ from gamelogic.BasicMachine import VoltageTier, Voltage
 class TestVoltageTier(unittest.TestCase):
     def test_voltage_tier_values(self):
         # Test that the enum values are as expected
-        self.assertEqual(VoltageTier.ULV.value, 0)
-        self.assertEqual(VoltageTier.LV.value, 1)
-        self.assertEqual(VoltageTier.MV.value, 2)
-        self.assertEqual(VoltageTier.MAX.value, 14)
-    
+        self.assertEqual(VoltageTier.LV.value, 0)
+        self.assertEqual(VoltageTier.MV.value, 1)
+        self.assertEqual(VoltageTier.MAX.value, 13)
+
     def test_from_int(self):
         # Test the from_int class method
-        self.assertEqual(VoltageTier.from_tier_num(0), VoltageTier.ULV)
-        self.assertEqual(VoltageTier.from_tier_num(1), VoltageTier.LV)
-        self.assertEqual(VoltageTier.from_tier_num(5), VoltageTier.IV)
-        self.assertEqual(VoltageTier.from_tier_num(14), VoltageTier.MAX)
-        
+        self.assertEqual(VoltageTier.from_tier_num(0), VoltageTier.LV)
+        self.assertEqual(VoltageTier.from_tier_num(1), VoltageTier.MV)
+        self.assertEqual(VoltageTier.from_tier_num(4), VoltageTier.IV) # IV is now tier 4
+        self.assertEqual(VoltageTier.from_tier_num(13), VoltageTier.MAX)
+
         # Test boundary conditions
-        self.assertEqual(VoltageTier.from_tier_num(-1), VoltageTier.ULV)  # Should clamp to min
-        self.assertEqual(VoltageTier.from_tier_num(20), VoltageTier.MAX)  # Should clamp to max
-    
+        self.assertEqual(VoltageTier.from_tier_num(-1), VoltageTier.LV)  # Should clamp to min (LV)
+        self.assertEqual(VoltageTier.from_tier_num(20), VoltageTier.MAX)  # Should clamp to max (MAX)
+
     def test_string_representation(self):
         # Test the string representation
-        self.assertEqual(str(VoltageTier.ULV), "ULV")
         self.assertEqual(str(VoltageTier.MV), "MV")
         self.assertEqual(str(VoltageTier.MAX), "MAX")
-    
+
     def test_from_name(self):
         # Test the from_name class method
-        self.assertEqual(VoltageTier.from_name("ULV"), VoltageTier.ULV)
         self.assertEqual(VoltageTier.from_name("MV"), VoltageTier.MV)
         self.assertEqual(VoltageTier.from_name("MAX"), VoltageTier.MAX)
-        
+
         # Test case insensitivity
-        self.assertEqual(VoltageTier.from_name("ulv"), VoltageTier.ULV)
+        self.assertEqual(VoltageTier.from_name("lv"), VoltageTier.LV)
         self.assertEqual(VoltageTier.from_name("mV"), VoltageTier.MV)
-        
+
         # Test invalid name
         with self.assertRaises(ValueError):
             VoltageTier.from_name("NotATier")
@@ -53,28 +50,27 @@ class TestVoltage(unittest.TestCase):
     
     def test_tier_property(self):
         # Test tier calculation for standard voltages
-        self.assertEqual(Voltage(0).tier, VoltageTier.ULV)
-        self.assertEqual(Voltage(8).tier, VoltageTier.ULV)
+        self.assertEqual(Voltage(0).tier, VoltageTier.LV) # 0 voltage now maps to LV
+        self.assertEqual(Voltage(8).tier, VoltageTier.LV) # Below 32 maps to LV
         self.assertEqual(Voltage(32).tier, VoltageTier.LV)
         self.assertEqual(Voltage(128).tier, VoltageTier.MV)
         self.assertEqual(Voltage(512).tier, VoltageTier.HV)
-        
+
         # Test tier calculation for in-between voltages
-        self.assertEqual(Voltage(20).tier, VoltageTier.LV)  # Between LV and MV, should round up to MV
-        self.assertEqual(Voltage(100).tier, VoltageTier.MV)  # Between MV and HV, should round up to HV
-        
+        self.assertEqual(Voltage(20).tier, VoltageTier.LV)  # Below 32 maps to LV
+        self.assertEqual(Voltage(100).tier, VoltageTier.MV) # Between 32 and 128 maps to MV
+
         # Test very high voltage
-        very_high = 8 * (4 ** 15)  # Beyond MAX tier
+        very_high = 32 * (4 ** 14) # Beyond MAX tier (now tier 13)
         self.assertEqual(Voltage(very_high).tier, VoltageTier.MAX)  # Should clamp to MAX
-    
+
     def test_from_tier(self):
         # Test creating voltage from tier
-        self.assertEqual(Voltage.from_tier(VoltageTier.ULV).voltage, 8)
         self.assertEqual(Voltage.from_tier(VoltageTier.LV).voltage, 32)
         self.assertEqual(Voltage.from_tier(VoltageTier.MV).voltage, 128)
         self.assertEqual(Voltage.from_tier(VoltageTier.HV).voltage, 512)
         self.assertEqual(Voltage.from_tier(VoltageTier.EV).voltage, 2048)
-    
+
     def test_equality(self):
         # Test equality comparison
         self.assertEqual(Voltage(32), Voltage(32))
@@ -86,7 +82,7 @@ class TestVoltage(unittest.TestCase):
     def test_representation(self):
         # Test string representation
         v = Voltage(30)
-        self.assertEqual(repr(v), f"Voltage(30, {VoltageTier.LV})")
+        self.assertEqual(repr(v), f"Voltage(30, {VoltageTier.LV})") # 30 is now LV
 
     def test_addition(self):
         # Test addition with another Voltage
