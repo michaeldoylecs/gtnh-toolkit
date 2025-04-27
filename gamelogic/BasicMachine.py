@@ -49,7 +49,7 @@ class BasicMachineRecipe(MachineRecipe):
         OVERCLOCK_POWER_FACTOR = 4
 
         recipe_voltage = Voltage(eu_per_gametick)
-        tier_ratio = recipe_voltage.tier.value / machine_tier.max_voltage
+        tier_ratio = recipe_voltage.tier.value / float(machine_tier.max_voltage)
         speed_overclock = OVERCLOCK_SPEED_FACTOR**tier_ratio
         power_overclock = OVERCLOCK_POWER_FACTOR**tier_ratio
 
