@@ -202,8 +202,8 @@ class TestVoltage(unittest.TestCase):
         self.assertEqual(result, 128)
         
         # Test float conversion
-        result = float(v)
-        self.assertIsInstance(result, float)
+        result2 = float(v)
+        self.assertIsInstance(result2, float)
         self.assertEqual(result, 128.0)
 
 if __name__ == '__main__':
