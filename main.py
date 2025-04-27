@@ -20,11 +20,13 @@ def main():
         print("Factory config not found")
         exit(1)
 
+    print("Reading factory config file.")
     factory_config = load_factory_config(factory_config_path)
     if factory_config is None:
         print("Loaded config had errors")
         exit(1)
 
+    print("Solving factory constraints.")
     model, results, machine_map = solve(factory_config.recipes, factory_config.targets[0])
 
     # Debug model variables
@@ -32,8 +34,13 @@ def main():
         variables = {v.name.strip("'"): v.value for v in model.component_objects(pyomo.Var, active=True) for v in v.values()}
         pprint(variables)
 
+    print("Building solution graph.")
     graph = build_solution_graph(model, machine_map)
+    
+    print("Outputing solution diagram.")
     draw(graph)
+
+    print("Done.")
 
 if __name__ == "__main__":
     main()
