@@ -1,18 +1,42 @@
-# Write tests to check the correctness of VoltageTier and Voltage from the BasicMachine.py file
+# Write tests to check the correctness of VoltageTier and Voltage from gamelogic.Electricity
 import unittest
-from gamelogic.BasicMachine import VoltageTier, Voltage
+# Correct the import path
+from gamelogic.Electricity import VoltageTier, Voltage
 
 class TestVoltageTier(unittest.TestCase):
-    def test_from_int(self):
-        # Test the from_int class method
-        self.assertEqual(VoltageTier.from_tier_num(0), VoltageTier.LV)
-        self.assertEqual(VoltageTier.from_tier_num(1), VoltageTier.MV)
-        self.assertEqual(VoltageTier.from_tier_num(4), VoltageTier.IV) # IV is now tier 4
-        self.assertEqual(VoltageTier.from_tier_num(13), VoltageTier.MAX)
+    def test_enum_values(self):
+        # Test that the enum values are as expected (starting from 1)
+        self.assertEqual(VoltageTier.LV.value, 1)
+        self.assertEqual(VoltageTier.MV.value, 2)
+        self.assertEqual(VoltageTier.HV.value, 3)
+        self.assertEqual(VoltageTier.EV.value, 4)
+        self.assertEqual(VoltageTier.IV.value, 5)
+        self.assertEqual(VoltageTier.LUV.value, 6)
+        self.assertEqual(VoltageTier.ZPM.value, 7)
+        self.assertEqual(VoltageTier.UV.value, 8)
+        self.assertEqual(VoltageTier.UHV.value, 9)
+        self.assertEqual(VoltageTier.UEV.value, 10)
+        self.assertEqual(VoltageTier.UIV.value, 11)
+        self.assertEqual(VoltageTier.UMV.value, 12)
+        self.assertEqual(VoltageTier.UXV.value, 13)
+        self.assertEqual(VoltageTier.MAX.value, 14)
+        # Check length excluding MAX if MAX is just a sentinel
+        # self.assertEqual(len(VoltageTier) -1, 13) # Or check length directly if MAX is included
+        self.assertEqual(len(VoltageTier), 14)
 
-        # Test boundary conditions
-        self.assertEqual(VoltageTier.from_tier_num(-1), VoltageTier.LV)  # Should clamp to min (LV)
-        self.assertEqual(VoltageTier.from_tier_num(20), VoltageTier.MAX)  # Should clamp to max (MAX)
+
+    def test_from_tier_num(self):
+        # Test the from_tier_num class method
+        self.assertEqual(VoltageTier.from_tier_num(1), VoltageTier.LV) # LV is now 1
+        self.assertEqual(VoltageTier.from_tier_num(2), VoltageTier.MV) # MV is now 2
+        self.assertEqual(VoltageTier.from_tier_num(5), VoltageTier.IV) # IV is now tier 5
+        self.assertEqual(VoltageTier.from_tier_num(14), VoltageTier.MAX) # MAX is now 14
+
+        # Test boundary conditions (should clamp between 1 and 14)
+        self.assertEqual(VoltageTier.from_tier_num(0), VoltageTier.LV)  # Should clamp to min (LV=1)
+        self.assertEqual(VoltageTier.from_tier_num(-1), VoltageTier.LV) # Should clamp to min (LV=1)
+        self.assertEqual(VoltageTier.from_tier_num(15), VoltageTier.MAX) # Should clamp to max (MAX=14)
+        self.assertEqual(VoltageTier.from_tier_num(20), VoltageTier.MAX) # Should clamp to max (MAX=14)
 
     def test_string_representation(self):
         # Test the string representation
@@ -43,27 +67,44 @@ class TestVoltage(unittest.TestCase):
         self.assertEqual(v_neg.voltage, 0)
     
     def test_tier_property(self):
-        # Test tier calculation for standard voltages
-        self.assertEqual(Voltage(0).tier, VoltageTier.LV) # 0 voltage now maps to LV
-        self.assertEqual(Voltage(8).tier, VoltageTier.LV) # Below 32 maps to LV
-        self.assertEqual(Voltage(32).tier, VoltageTier.LV)
-        self.assertEqual(Voltage(128).tier, VoltageTier.MV)
-        self.assertEqual(Voltage(512).tier, VoltageTier.HV)
+        # Test tier calculation for standard voltages based on V_max(T) = 32 * 4^(T-1)
+        # LV (T=1): Vmax=32. Range (0, 32]
+        # MV (T=2): Vmax=128. Range (32, 128]
+        # HV (T=3): Vmax=512. Range (128, 512]
+        self.assertEqual(Voltage(0).tier, VoltageTier.LV) # 0 voltage maps to LV
+        self.assertEqual(Voltage(1).tier, VoltageTier.LV)
+        self.assertEqual(Voltage(8).tier, VoltageTier.LV)
+        self.assertEqual(Voltage(31).tier, VoltageTier.LV)
+        self.assertEqual(Voltage(32).tier, VoltageTier.LV) # Max voltage of LV tier
+
+        self.assertEqual(Voltage(33).tier, VoltageTier.MV) # Start of MV range
+        self.assertEqual(Voltage(127).tier, VoltageTier.MV)
+        self.assertEqual(Voltage(128).tier, VoltageTier.MV) # Max voltage of MV tier
+
+        self.assertEqual(Voltage(129).tier, VoltageTier.HV) # Start of HV range
+        self.assertEqual(Voltage(511).tier, VoltageTier.HV)
+        self.assertEqual(Voltage(512).tier, VoltageTier.HV) # Max voltage of HV tier
 
         # Test tier calculation for in-between voltages
-        self.assertEqual(Voltage(20).tier, VoltageTier.LV)  # Below 32 maps to LV
-        self.assertEqual(Voltage(100).tier, VoltageTier.MV) # Between 32 and 128 maps to MV
+        self.assertEqual(Voltage(20).tier, VoltageTier.LV)
+        self.assertEqual(Voltage(100).tier, VoltageTier.MV)
+        self.assertEqual(Voltage(300).tier, VoltageTier.HV)
 
         # Test very high voltage
-        very_high = 32 * (4 ** 14) # Beyond MAX tier (now tier 13)
-        self.assertEqual(Voltage(very_high).tier, VoltageTier.MAX)  # Should clamp to MAX
+        max_voltage_val = 32 * (4**(VoltageTier.MAX.value - 1)) # Max voltage of MAX tier
+        self.assertEqual(Voltage(max_voltage_val).tier, VoltageTier.MAX)
+        # Voltage higher than MAX tier's max voltage should still clamp to MAX tier
+        self.assertEqual(Voltage(max_voltage_val + 1).tier, VoltageTier.MAX)
+        self.assertEqual(Voltage(max_voltage_val * 2).tier, VoltageTier.MAX)
 
     def test_from_tier(self):
-        # Test creating voltage from tier
-        self.assertEqual(Voltage.from_tier(VoltageTier.LV).voltage, 32)
-        self.assertEqual(Voltage.from_tier(VoltageTier.MV).voltage, 128)
-        self.assertEqual(Voltage.from_tier(VoltageTier.HV).voltage, 512)
-        self.assertEqual(Voltage.from_tier(VoltageTier.EV).voltage, 2048)
+        # Test creating MAX voltage from tier (using base voltage 32 and tier values)
+        # V_max(T) = 32 * 4^(T-1)
+        self.assertEqual(Voltage.from_tier(VoltageTier.LV).voltage, 32)  # LV (tier 1) -> 32 * 4^0 = 32
+        self.assertEqual(Voltage.from_tier(VoltageTier.MV).voltage, 128) # MV (tier 2) -> 32 * 4^1 = 128
+        self.assertEqual(Voltage.from_tier(VoltageTier.HV).voltage, 512) # HV (tier 3) -> 32 * 4^2 = 512
+        self.assertEqual(Voltage.from_tier(VoltageTier.EV).voltage, 2048) # EV (tier 4) -> 32 * 4^3 = 2048
+        self.assertEqual(Voltage.from_tier(VoltageTier.MAX).voltage, 32 * (4**13)) # MAX (tier 14) -> 32 * 4^13
 
     def test_equality(self):
         # Test equality comparison
@@ -75,8 +116,13 @@ class TestVoltage(unittest.TestCase):
     
     def test_representation(self):
         # Test string representation
-        v = Voltage(30)
-        self.assertEqual(repr(v), f"Voltage(30, {VoltageTier.LV})") # 30 is now LV
+        v = Voltage(30) # 30 is in LV range (0-32]
+        self.assertEqual(repr(v), f"Voltage(30, {VoltageTier.LV})")
+        v_mv = Voltage(100) # 100 is in MV range (32-128]
+        self.assertEqual(repr(v_mv), f"Voltage(100, {VoltageTier.MV})")
+        v_hv = Voltage(512) # 512 is max of HV range (128-512]
+        self.assertEqual(repr(v_hv), f"Voltage(512, {VoltageTier.HV})")
+
 
     def test_addition(self):
         # Test addition with another Voltage
