@@ -45,14 +45,17 @@ class BasicMachineRecipe(MachineRecipe):
             duration: GameTicks,
             eu_per_gametick: int,
     ) -> tuple[GameTicks, int]:
+        recipe_voltage = Voltage(eu_per_gametick)
+        if (machine_tier < recipe_voltage.tier):
+            raise ValueError("Recipe tier cannot exceed machine tier.")
+        elif (machine_tier == recipe_voltage.tier):
+            return (duration, eu_per_gametick)
+
         OVERCLOCK_SPEED_FACTOR = 2.0
         OVERCLOCK_POWER_FACTOR = 4
+        
+        tier_difference = machine_tier.value - recipe_voltage.tier.value
+        new_duration = GameTicks(math.ceil(max(1, duration / (OVERCLOCK_SPEED_FACTOR ** tier_difference))))
+        new_eu_per_gametick = eu_per_gametick * (OVERCLOCK_POWER_FACTOR ** tier_difference)
 
-        recipe_voltage = Voltage(eu_per_gametick)
-        tier_ratio = recipe_voltage.tier.value / float(machine_tier.max_voltage)
-        speed_overclock = OVERCLOCK_SPEED_FACTOR**tier_ratio
-        power_overclock = OVERCLOCK_POWER_FACTOR**tier_ratio
-
-        recipe_time = GameTicks(math.ceil(duration / speed_overclock))
-        recipe_cost = int(eu_per_gametick * power_overclock)
-        return (recipe_time, recipe_cost)
+        return (new_duration, new_eu_per_gametick)

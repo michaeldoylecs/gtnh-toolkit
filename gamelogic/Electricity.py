@@ -54,6 +54,31 @@ class VoltageTier(Enum):
 
     def __str__(self) -> str:
         return self.name
+    
+    def __eq__(self, other):
+        if isinstance(other, VoltageTier):
+            return self.value == other.value
+        return False
+
+    def __lt__(self, other):
+        if isinstance(other, VoltageTier):
+            return self.value < other.value
+        return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, VoltageTier):
+            return self.value <= other.value
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, VoltageTier):
+            return self.value > other.value
+        return NotImplemented
+
+    def __ge__(self, other):
+        if isinstance(other, VoltageTier):
+            return self.value >= other.value
+        return NotImplemented
 
 class Voltage:
     def __init__(self, voltage: int):
