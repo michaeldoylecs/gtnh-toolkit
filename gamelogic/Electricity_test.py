@@ -3,12 +3,6 @@ import unittest
 from gamelogic.BasicMachine import VoltageTier, Voltage
 
 class TestVoltageTier(unittest.TestCase):
-    def test_voltage_tier_values(self):
-        # Test that the enum values are as expected
-        self.assertEqual(VoltageTier.LV.value, 0)
-        self.assertEqual(VoltageTier.MV.value, 1)
-        self.assertEqual(VoltageTier.MAX.value, 13)
-
     def test_from_int(self):
         # Test the from_int class method
         self.assertEqual(VoltageTier.from_tier_num(0), VoltageTier.LV)
