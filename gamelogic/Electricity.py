@@ -107,7 +107,7 @@ class Voltage:
         # Clamp voltage >= 1 for log
         voltage_for_log = max(1, self.voltage)
         tier_num_float = math.log(voltage_for_log / 8, 4)
-        tier_num = math.floor(tier_num_float)
+        tier_num = math.ceil(tier_num_float)
 
         # Clamp result between 1 (LV) and 14 (MAX)
         tier_num = min(14, max(1, tier_num))
