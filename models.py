@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from gamelogic.BasicMachine import MachineRecipe
+from gamelogic.Machines import MachineRecipe
 from gamelogic.Items import Item, make_item
 
 @dataclass(frozen=True)

@@ -3,9 +3,9 @@ from pydantic.dataclasses import dataclass as pdataclass
 import json
 from pydantic import ValidationError
 import yaml
-
-from gamelogic.BasicMachine import StandardOverclockMachineRecipe, GameTicks, MachineRecipe, VoltageTier
+from gamelogic.Electricity import VoltageTier
 from gamelogic.Items import make_itemstack
+from gamelogic.Machines import StandardOverclockMachineRecipe, GameTicks, MachineRecipe
 from models import FactoryConfig, TargetRate, make_target
 import os
 
