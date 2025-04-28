@@ -27,17 +27,11 @@ class VoltageTier(Enum):
     @property
     def min_voltage(self):
         if self == VoltageTier.LV:
-             # Or perhaps return Voltage(0)? Depends on desired behavior.
-             # Let's return the voltage corresponding to the start of the tier below,
-             # which for LV (tier 1) doesn't exist in the same way.
-             # Returning 0 seems reasonable.
             return Voltage(0)
         else:
-            # Get the tier below the current one
+            # Get the tier below the current one + 1
             previous_tier = VoltageTier.from_tier_num(self.value - 1)
-            # Return the max voltage of that previous tier + 1 (or just the start of the current tier?)
-            # Let's return the voltage calculated by from_tier for the tier below.
-            return Voltage.from_tier(previous_tier)
+            return Voltage.from_tier(previous_tier) + 1
 
     @classmethod
     def from_tier_num(cls, tier_num: int) -> 'VoltageTier':
