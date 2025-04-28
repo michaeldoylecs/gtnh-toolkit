@@ -1,12 +1,6 @@
 import math
 from gamelogic.Electricity import Voltage, VoltageTier
-# Assuming Items.py exists at the same level as Electricity.py
-try:
-    from gamelogic.Items import ItemStack
-except ImportError:
-    print("Warning: gamelogic.Items or ItemStack not found. Using placeholder.")
-    class ItemStack: pass # Placeholder definition
-
+from gamelogic.Items import ItemStack
 from .Base import MachineRecipe, GameTicks
 
 class StandardOverclockMachineRecipe(MachineRecipe):
