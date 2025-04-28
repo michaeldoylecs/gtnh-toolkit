@@ -56,6 +56,9 @@ requires-dist = [
     { name = "types-pyyaml", specifier = ">=6.0.12.20241230" },
 ]
 
+[package.metadata.requires-dev]
+dev = []
+
 [[package]]
 name = "iniconfig"
 version = "2.1.0"
