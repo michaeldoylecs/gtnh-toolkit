@@ -14,7 +14,7 @@ class MachineRecipe():
     eu_per_gametick: int
 
 
-class BasicMachineRecipe(MachineRecipe):
+class StandardOverclockMachineRecipe(MachineRecipe):
 
     def __init__(
             self,
@@ -61,7 +61,7 @@ class BasicMachineRecipe(MachineRecipe):
         return (new_duration, new_eu_per_gametick)
 
 
-class FastMachineRecipe(MachineRecipe):
+class PerfectOverclockMachineRecipe(MachineRecipe):
 
     def __init__(
             self,
@@ -77,7 +77,7 @@ class FastMachineRecipe(MachineRecipe):
         self.inputs = inputs
         self.outputs = outputs
 
-        recipe_time, recipe_cost = self.__apply_fast_overclock(
+        recipe_time, recipe_cost = self.__apply_perfect_overclock(
             self.machine_tier,
             duration,
             eu_per_gametick
@@ -86,7 +86,7 @@ class FastMachineRecipe(MachineRecipe):
         self.eu_per_gametick = recipe_cost
 
 
-    def __apply_fast_overclock(
+    def __apply_perfect_overclock(
             self,
             machine_tier: VoltageTier,
             duration: GameTicks,
@@ -98,7 +98,6 @@ class FastMachineRecipe(MachineRecipe):
         elif (machine_tier == recipe_voltage.tier):
             return (duration, eu_per_gametick)
 
-        # Use a different speed factor for this machine type
         OVERCLOCK_SPEED_FACTOR = 4.0 
         OVERCLOCK_POWER_FACTOR = 4
         
