@@ -1,7 +1,7 @@
 from collections import defaultdict
 import pyomo.environ as pyomo # type: ignore
 from pyomo.opt import SolverResults # type: ignore
-from gamelogic.BasicMachine import MachineRecipe
+from gamelogic.Machines import MachineRecipe
 from models import Item, TargetRate
 
 def solve(
