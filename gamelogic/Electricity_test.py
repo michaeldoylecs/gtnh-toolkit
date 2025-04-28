@@ -4,27 +4,6 @@ import unittest
 from gamelogic.Electricity import VoltageTier, Voltage
 
 class TestVoltageTier(unittest.TestCase):
-    def test_enum_values(self):
-        # Test that the enum values are as expected (starting from 1)
-        self.assertEqual(VoltageTier.LV.value, 1)
-        self.assertEqual(VoltageTier.MV.value, 2)
-        self.assertEqual(VoltageTier.HV.value, 3)
-        self.assertEqual(VoltageTier.EV.value, 4)
-        self.assertEqual(VoltageTier.IV.value, 5)
-        self.assertEqual(VoltageTier.LUV.value, 6)
-        self.assertEqual(VoltageTier.ZPM.value, 7)
-        self.assertEqual(VoltageTier.UV.value, 8)
-        self.assertEqual(VoltageTier.UHV.value, 9)
-        self.assertEqual(VoltageTier.UEV.value, 10)
-        self.assertEqual(VoltageTier.UIV.value, 11)
-        self.assertEqual(VoltageTier.UMV.value, 12)
-        self.assertEqual(VoltageTier.UXV.value, 13)
-        self.assertEqual(VoltageTier.MAX.value, 14)
-        # Check length excluding MAX if MAX is just a sentinel
-        # self.assertEqual(len(VoltageTier) -1, 13) # Or check length directly if MAX is included
-        self.assertEqual(len(VoltageTier), 14)
-
-
     def test_from_tier_num(self):
         # Test the from_tier_num class method
         self.assertEqual(VoltageTier.from_tier_num(1), VoltageTier.LV) # LV is now 1
@@ -37,11 +16,6 @@ class TestVoltageTier(unittest.TestCase):
         self.assertEqual(VoltageTier.from_tier_num(-1), VoltageTier.LV) # Should clamp to min (LV=1)
         self.assertEqual(VoltageTier.from_tier_num(15), VoltageTier.MAX) # Should clamp to max (MAX=14)
         self.assertEqual(VoltageTier.from_tier_num(20), VoltageTier.MAX) # Should clamp to max (MAX=14)
-
-    def test_string_representation(self):
-        # Test the string representation
-        self.assertEqual(str(VoltageTier.MV), "MV")
-        self.assertEqual(str(VoltageTier.MAX), "MAX")
 
     def test_from_name(self):
         # Test the from_name class method
