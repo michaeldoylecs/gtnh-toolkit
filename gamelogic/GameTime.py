@@ -16,7 +16,7 @@ class GameTime:
     @classmethod
     def from_ticks(cls, ticks: int) -> 'GameTime':
         """Creates a GameTime object from a duration in game ticks."""
-        return cls(ticks)
+        return cls(_ticks=ticks)
 
     @classmethod
     def from_seconds(cls, seconds: Union[int, float]) -> 'GameTime':
