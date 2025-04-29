@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 from typing import Union
 
 TICKS_PER_SECOND = 20
@@ -22,7 +23,7 @@ class GameTime:
         """Creates a GameTime object from a duration in seconds."""
         if seconds < 0:
             raise ValueError("Duration in seconds cannot be negative")
-        ticks = round(seconds * TICKS_PER_SECOND)
+        ticks = math.ceil(seconds * TICKS_PER_SECOND)
         return cls(ticks)
 
     def as_ticks(self) -> int:
