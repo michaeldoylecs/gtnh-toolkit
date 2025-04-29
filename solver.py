@@ -35,7 +35,8 @@ def solve(
             setattr(model, item_in_link, pyomo.Var(domain=pyomo.NonNegativeReals))
             item_in_links[itemstack.item].append(item_in_link)
             input_variable = getattr(model, item_in_link)
-            rate = itemstack.quantity / recipe.duration
+            # Update rate calculation:
+            rate = itemstack.quantity / recipe.duration.as_seconds()
             getattr(model, f'{machine_name}_constraints').add(machine_variable == input_variable / rate)
 
         # Make output variables and constraints
@@ -45,7 +46,8 @@ def solve(
             setattr(model, item_out_link, pyomo.Var(domain=pyomo.NonNegativeReals))
             item_out_links[itemstack.item].append(item_out_link)
             output_variable = getattr(model, item_out_link)
-            rate = itemstack.quantity / recipe.duration
+            # Update rate calculation:
+            rate = itemstack.quantity / recipe.duration.as_seconds()
             getattr(model, f'{machine_name}_constraints').add(machine_variable == output_variable / rate)
 
         # Add recipe constraints between inputs, outputs
@@ -53,8 +55,9 @@ def solve(
         for in_itemstack, out_itemstack in input_output_pairs:
             in_variable = getattr(model, f'{machine_name}_IN_{in_itemstack.item.name}')
             out_variable = getattr(model, f'{machine_name}_OUT_{out_itemstack.item.name}')
-            in_rate = in_itemstack.quantity / recipe.duration
-            out_rate = out_itemstack.quantity / recipe.duration
+            # Update rate calculations:
+            in_rate = in_itemstack.quantity / recipe.duration.as_seconds()
+            out_rate = out_itemstack.quantity / recipe.duration.as_seconds()
             getattr(model, f'{machine_name}_constraints').add((out_variable / out_rate) - (in_variable / in_rate) == 0)
     
     # Make sources for each IN link item

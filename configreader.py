@@ -5,7 +5,10 @@ from pydantic import ValidationError
 import yaml
 from gamelogic.Electricity import VoltageTier
 from gamelogic.Items import make_itemstack
-from gamelogic.Machines import StandardOverclockMachineRecipe, GameTicks, MachineRecipe
+# Update import: remove GameTicks
+from gamelogic.Machines import StandardOverclockMachineRecipe, MachineRecipe
+# Add GameTime import:
+from gamelogic.GameTime import GameTime
 from models import FactoryConfig, TargetRate, make_target
 import os
 
@@ -50,7 +53,8 @@ def load_factory_config(file_path: str) -> Optional[FactoryConfig]:
         voltage_tier = VoltageTier.from_name(raw_recipe.tier.upper())
         inputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.inputs.items()]
         outputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.outputs.items()]
-        duration = GameTicks(raw_recipe.dur)
+        # Update duration creation:
+        duration = GameTime.from_ticks(raw_recipe.dur)
         eu_per_gametick = raw_recipe.eut
         recipe = StandardOverclockMachineRecipe(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
         recipes.append(recipe)
