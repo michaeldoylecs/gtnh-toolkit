@@ -1,13 +1,11 @@
-# Update import:
 from .Base import MachineRecipe
-from gamelogic.GameTime import GameTime # Add this import
+from gamelogic.GameTime import GameTime
 from .StandardOverclockMachine import StandardOverclockMachineRecipe
 from .PerfectOverclockMachine import PerfectOverclockMachineRecipe
 
 __all__ = [
     'MachineRecipe',
-    # Remove 'GameTicks',
-    'GameTime', # Add GameTime
+    'GameTime',
     'StandardOverclockMachineRecipe',
     'PerfectOverclockMachineRecipe',
 ]

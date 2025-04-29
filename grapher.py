@@ -410,7 +410,7 @@ def draw(graph: SolutionGraph):
             f'<td border="0" PORT="{machine.id}">{'{:,.2f}'.format(machine.quantity)}x {machine.machine_name}</td>',
             '</tr>',
             '<tr>',
-            f'<td border="0">Recipe time: {'{:,.2f}'.format(machine.recipe.duration / 20)}s</td>'
+            f'<td border="0">Recipe time: {'{:,.2f}'.format(machine.recipe.duration.as_seconds())}s</td>'
             '</tr>',
             '<tr>',
             f'<td border="0">EU Amortized: {machine_eu_amortized} EU/t</td>'

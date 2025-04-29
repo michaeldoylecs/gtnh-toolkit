@@ -5,7 +5,7 @@ from gamelogic.GameTime import GameTime
 
 class MachineRecipe():
     machine_name: str
-    machine_tier: VoltageTier # Changed from machine_voltage to machine_tier
+    machine_tier: VoltageTier
     inputs: list[ItemStack]
     outputs: list[ItemStack]
     duration: GameTime

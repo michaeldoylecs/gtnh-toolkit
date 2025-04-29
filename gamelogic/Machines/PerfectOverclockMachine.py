@@ -1,8 +1,6 @@
 import math
-import math
 from gamelogic.Electricity import Voltage, VoltageTier
 from gamelogic.Items import ItemStack
-# Update import:
 from .Base import MachineRecipe
 from gamelogic.GameTime import GameTime
 
@@ -14,7 +12,6 @@ class PerfectOverclockMachineRecipe(MachineRecipe):
             machine_tier: VoltageTier,
             inputs: list[ItemStack],
             outputs: list[ItemStack],
-            # Update type hint:
             duration: GameTime,
             eu_per_gametick: int
     ):
@@ -35,10 +32,8 @@ class PerfectOverclockMachineRecipe(MachineRecipe):
     def __apply_perfect_overclock(
             self,
             machine_tier: VoltageTier,
-            # Update type hint:
             duration: GameTime,
             eu_per_gametick: int,
-    # Update return type hint:
     ) -> tuple[GameTime, int]:
         recipe_voltage = Voltage(eu_per_gametick)
         if (machine_tier < recipe_voltage.tier):
@@ -50,7 +45,6 @@ class PerfectOverclockMachineRecipe(MachineRecipe):
         OVERCLOCK_POWER_FACTOR = 4
 
         tier_difference = machine_tier.value - recipe_voltage.tier.value
-        # Update duration calculation:
         original_ticks = duration.as_ticks()
         new_duration_ticks = math.ceil(max(1, original_ticks / (OVERCLOCK_SPEED_FACTOR ** tier_difference)))
         new_duration = GameTime.from_ticks(new_duration_ticks)

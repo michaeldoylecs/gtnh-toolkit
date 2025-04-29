@@ -38,6 +38,3 @@ class GameTime:
 
     def __repr__(self) -> str:
         return f"GameTime(ticks={self._ticks})"
-
-    # Optional: Add comparison and arithmetic methods if needed later
-    # For now, keeping it simple.
