@@ -3,19 +3,43 @@ from pydantic.dataclasses import dataclass as pdataclass
 import json
 from pydantic import ValidationError
 import yaml
-from gamelogic.Electricity import VoltageTier
+from gamelogic.Electricity import Voltage, VoltageTier
 from gamelogic.Items import make_itemstack
 from gamelogic.Machines import StandardOverclockMachineRecipe, MachineRecipe, PerfectOverclockMachineRecipe
 from gamelogic.GameTime import GameTime
 from models import FactoryConfig, TargetRate, make_target
 import os
 
+def normalize_machine_name(machine_name: str) -> str:
+    normalized_name_map = {
+        'Electric Blast Furnace': [
+            'electric blast furnace',
+            'ebf',
+        ],
+        'Large Chemical Reactor': [
+            'large chemical reactor',
+            'lcr',
+        ],
+    }
+
+    inverted_map = {}
+    for key, value_list in normalized_name_map.items():
+        for value in value_list:
+            inverted_map[value] = key
+
+    normalized_name = inverted_map.get(machine_name.lower())
+    if normalized_name is None:
+        return machine_name
+    else:
+        return normalized_name
+
+type AnyMachineRecipe = StandardOverclockMachineRecipe | PerfectOverclockMachineRecipe
+
 # Define a mapping from machine name identifiers to recipe classes
 # Using uppercase keys for case-insensitive matching later
-MACHINE_NAME_TO_RECIPE_CLASS: dict[str, type[MachineRecipe]] = {
-    "EBF": PerfectOverclockMachineRecipe,
-    # Add other specific machine types and their classes here
-    # e.g., "ASSEMBLYLINE": SomeOtherRecipeClass,
+MACHINE_NAME_TO_RECIPE_CLASS: dict[str, type[AnyMachineRecipe]] = {
+    "Electric Blast Furnace": StandardOverclockMachineRecipe,
+    "Large Chemical Reactor": PerfectOverclockMachineRecipe,
 }
 
 @pdataclass
@@ -55,20 +79,17 @@ def load_factory_config(file_path: str) -> Optional[FactoryConfig]:
     recipes: list[MachineRecipe] = []
     for raw_recipe in parsed_input.recipes:
         # TODO: Inputs and Outputs should be floats, not ints. This is to accommodate chance outputs
-        name = raw_recipe.m
+        name = normalize_machine_name(raw_recipe.m)
         voltage_tier = VoltageTier.from_name(raw_recipe.tier.upper())
         inputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.inputs.items()]
         outputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.outputs.items()]
         duration = GameTime.from_ticks(raw_recipe.dur)
-        eu_per_gametick = raw_recipe.eut
+        eu_per_gametick = Voltage(raw_recipe.eut)
 
         # Select the appropriate recipe class using the map, default to Standard
-        recipe_class = StandardOverclockMachineRecipe # Default value
-        # Check if any key from the map is present in the machine name (case-insensitive)
-        for key, cls in MACHINE_NAME_TO_RECIPE_CLASS.items():
-            if key in name.upper():
-                recipe_class = cls
-                break # Use the first match found
+        recipe_class = MACHINE_NAME_TO_RECIPE_CLASS.get(name)
+        if recipe_class is None:
+            recipe_class = StandardOverclockMachineRecipe
 
         recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
         recipes.append(recipe)

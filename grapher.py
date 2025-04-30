@@ -402,8 +402,8 @@ def draw(graph: SolutionGraph):
             '</table>',
         ])
 
-        machine_eu_amortized = applySISymbols(machine.recipe.eu_per_gametick * machine.quantity)
-        eu_per_machine = applySISymbols(machine.recipe.eu_per_gametick)
+        machine_eu_amortized = applySISymbols(machine.recipe.eu_per_gametick.voltage * machine.quantity)
+        eu_per_machine = applySISymbols(machine.recipe.eu_per_gametick.voltage)
         machine_table = ''.join([
             '<table border="0" bgcolor="white" cellspacing="0">',
             '<tr>',
@@ -486,7 +486,7 @@ def draw(graph: SolutionGraph):
         ))
 
         machine_count = reduce(lambda sum, m: sum + math.ceil(m.quantity), machines, 0)
-        average_eu_per_tick_in = -1.0 * reduce(lambda sum, m: sum + m.quantity * m.recipe.eu_per_gametick, machines, 0.0)
+        average_eu_per_tick_in = -1.0 * reduce(lambda sum, m: sum + m.quantity * m.recipe.eu_per_gametick.voltage, machines, 0.0)
 
         overview = ''.join([
             '<<table border="1" cellpadding="0" cellspacing="0" bgcolor="#043742">',
