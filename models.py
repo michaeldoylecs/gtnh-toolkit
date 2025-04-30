@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from gamelogic.Machines import MachineRecipe
-from gamelogic.Items import Item, make_item
+from gamelogic.machines import MachineRecipe
+from gamelogic.items import Item, make_item
 
 @dataclass(frozen=True)
 class TargetRate:
