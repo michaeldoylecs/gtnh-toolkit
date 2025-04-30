@@ -5,7 +5,7 @@ from pydantic import ValidationError
 import yaml
 from gamelogic.Electricity import VoltageTier
 from gamelogic.Items import make_itemstack
-from gamelogic.Machines import StandardOverclockMachineRecipe, MachineRecipe
+from gamelogic.Machines import StandardOverclockMachineRecipe, MachineRecipe, PerfectOverclockMachineRecipe
 from gamelogic.GameTime import GameTime
 from models import FactoryConfig, TargetRate, make_target
 import os
@@ -53,9 +53,18 @@ def load_factory_config(file_path: str) -> Optional[FactoryConfig]:
         outputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.outputs.items()]
         duration = GameTime.from_ticks(raw_recipe.dur)
         eu_per_gametick = raw_recipe.eut
-        recipe = StandardOverclockMachineRecipe(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+
+        # Select the appropriate recipe class based on the machine name
+        # Example: Use PerfectOverclockMachineRecipe for EBFs, Standard otherwise
+        # TODO: Refine this mapping as needed for other machine types
+        if "EBF" in name.upper(): # Check if 'EBF' is in the machine name (case-insensitive)
+            recipe_class = PerfectOverclockMachineRecipe
+        else:
+            recipe_class = StandardOverclockMachineRecipe
+
+        recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
         recipes.append(recipe)
-    
+
     targets: list[TargetRate] = []
     for item, quantity in parsed_input.targets.items():
         target = make_target(item, quantity)
