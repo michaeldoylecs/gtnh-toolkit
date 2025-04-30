@@ -49,3 +49,12 @@ targets:
 ## Dependencies
 
  - [Cbc](https://github.com/coin-or/Cbc/tree/master)
+
+## Development
+
+### Adding new machine logic
+
+1) Create a new machine recipe class with logic in `gamelogic/machines`.
+2) Add normalized machine names to `normalize_machine_name()` in `config_reader.py`
+3) Add machine name to machine recipe mapping to `MACHINE_NAME_TO_RECIPE_CLASS` in `config_reader.py`
+4) Add recipe creation handling to `initialize_recipe()` in `config_reader.py`
