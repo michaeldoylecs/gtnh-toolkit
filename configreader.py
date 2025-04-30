@@ -3,6 +3,7 @@ from pydantic.dataclasses import dataclass as pdataclass
 import json
 from pydantic import ValidationError
 import yaml
+import args
 from gamelogic.Electricity import Voltage, VoltageTier
 from gamelogic.Items import make_itemstack
 from gamelogic.Machines import StandardOverclockMachineRecipe, MachineRecipe, PerfectOverclockMachineRecipe
@@ -56,6 +57,46 @@ class InputFactoryConfig:
     recipes: list[InputRecipe]
     targets: Dict[str, float]
 
+def initialize_recipe(raw_recipe: InputRecipe) -> MachineRecipe:
+    name = normalize_machine_name(raw_recipe.m)
+    voltage_tier = VoltageTier.from_name(raw_recipe.tier.upper())
+    inputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.inputs.items()]
+    outputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.outputs.items()]
+    duration = GameTime.from_ticks(raw_recipe.dur)
+    eu_per_gametick = Voltage(raw_recipe.eut)
+
+    if args.is_verbose():
+            print(f"""
+initialize_recipe():
+    name = {name}
+    voltage_tier = {voltage_tier}
+    inputs = {inputs}
+    outputs = {outputs}
+    duration = {duration}
+    eu_per_gametick = {eu_per_gametick}
+            """)
+
+    # Select the appropriate recipe class using the map, default to Standard
+    recipe_class = MACHINE_NAME_TO_RECIPE_CLASS.get(name)
+    if recipe_class is None:
+        recipe_class = StandardOverclockMachineRecipe
+        if args.is_verbose():
+            print(f"Loaded machine with name '{name}', which is not a registered machine name.")
+
+    if args.is_verbose():
+            print(f"recipe_class = {recipe_class}")
+
+    recipe = None
+    if recipe_class is StandardOverclockMachineRecipe:
+        recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+    elif recipe_class is PerfectOverclockMachineRecipe:
+        recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+    else:
+        raise ValueError(f"recipe_class is of unhandled type: {type(recipe_class)}")
+
+    recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+    return recipe
+
 def get_file_extension(file_path: str):
     return os.path.splitext(file_path)[1][1:].lower()
 
@@ -78,20 +119,7 @@ def load_factory_config(file_path: str) -> Optional[FactoryConfig]:
     # Convert from pydantic dataclasses to python dataclasses
     recipes: list[MachineRecipe] = []
     for raw_recipe in parsed_input.recipes:
-        # TODO: Inputs and Outputs should be floats, not ints. This is to accommodate chance outputs
-        name = normalize_machine_name(raw_recipe.m)
-        voltage_tier = VoltageTier.from_name(raw_recipe.tier.upper())
-        inputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.inputs.items()]
-        outputs = [make_itemstack(item, quantity) for (item, quantity) in raw_recipe.outputs.items()]
-        duration = GameTime.from_ticks(raw_recipe.dur)
-        eu_per_gametick = Voltage(raw_recipe.eut)
-
-        # Select the appropriate recipe class using the map, default to Standard
-        recipe_class = MACHINE_NAME_TO_RECIPE_CLASS.get(name)
-        if recipe_class is None:
-            recipe_class = StandardOverclockMachineRecipe
-
-        recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+        recipe = initialize_recipe(raw_recipe)
         recipes.append(recipe)
 
     targets: list[TargetRate] = []
