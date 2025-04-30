@@ -8,6 +8,7 @@ from gamelogic.electricity import Voltage, VoltageTier
 from gamelogic.items import make_itemstack
 from gamelogic.machines import StandardOverclockMachineRecipe, MachineRecipe, PerfectOverclockMachineRecipe
 from gamelogic.game_time import GameTime
+from gamelogic.machines.industrial_centrifuge import IndustrialCentrifugeRecipe
 from models import FactoryConfig, TargetRate, make_target
 import os
 
@@ -20,6 +21,9 @@ def normalize_machine_name(machine_name: str) -> str:
         'Large Chemical Reactor': [
             'large chemical reactor',
             'lcr',
+        ],
+        'Industrial Centrifuge': [
+            'industrial centrifuge',
         ],
     }
 
@@ -34,13 +38,14 @@ def normalize_machine_name(machine_name: str) -> str:
     else:
         return normalized_name
 
-type AnyMachineRecipe = StandardOverclockMachineRecipe | PerfectOverclockMachineRecipe
+type AnyMachineRecipe = StandardOverclockMachineRecipe | PerfectOverclockMachineRecipe | IndustrialCentrifugeRecipe
 
 # Define a mapping from machine name identifiers to recipe classes
 # Using uppercase keys for case-insensitive matching later
-MACHINE_NAME_TO_RECIPE_CLASS: dict[str, type[AnyMachineRecipe]] = {
+MACHINE_NAME_TO_RECIPE_CLASS: dict[str, type[MachineRecipe]] = {
     "Electric Blast Furnace": StandardOverclockMachineRecipe,
     "Large Chemical Reactor": PerfectOverclockMachineRecipe,
+    "Industrial Centrifuge": IndustrialCentrifugeRecipe,
 }
 
 @pdataclass
@@ -73,8 +78,7 @@ initialize_recipe():
     inputs = {inputs}
     outputs = {outputs}
     duration = {duration}
-    eu_per_gametick = {eu_per_gametick}
-            """)
+    eu_per_gametick = {eu_per_gametick}""")
 
     # Select the appropriate recipe class using the map, default to Standard
     recipe_class = MACHINE_NAME_TO_RECIPE_CLASS.get(name)
@@ -86,15 +90,16 @@ initialize_recipe():
     if args.is_verbose():
             print(f"recipe_class = {recipe_class}")
 
-    recipe = None
+    recipe: MachineRecipe
     if recipe_class is StandardOverclockMachineRecipe:
-        recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+        recipe = StandardOverclockMachineRecipe(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
     elif recipe_class is PerfectOverclockMachineRecipe:
-        recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+        recipe = PerfectOverclockMachineRecipe(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
+    elif recipe_class is IndustrialCentrifugeRecipe:
+        recipe = IndustrialCentrifugeRecipe(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
     else:
-        raise ValueError(f"recipe_class is of unhandled type: {type(recipe_class)}")
+        raise ValueError(f"recipe_class is of unhandled type: {recipe_class}")
 
-    recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
     return recipe
 
 def get_file_extension(file_path: str):
