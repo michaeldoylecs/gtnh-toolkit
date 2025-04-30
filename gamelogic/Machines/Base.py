@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from gamelogic.Items import ItemStack
-from gamelogic.Electricity import Voltage, VoltageTier
-from gamelogic.GameTime import GameTime
+from gamelogic.items import ItemStack
+from gamelogic.electricity import Voltage, VoltageTier
+from gamelogic.game_time import GameTime
 
 class MachineRecipe(ABC):
 

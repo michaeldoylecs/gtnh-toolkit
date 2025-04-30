@@ -1,6 +1,6 @@
 from pprint import pprint
 import pyomo.environ as pyomo # type: ignore
-from configreader import load_factory_config
+from config_reader import load_factory_config
 from grapher import build_solution_graph, draw
 from solver import solve
 import argparse

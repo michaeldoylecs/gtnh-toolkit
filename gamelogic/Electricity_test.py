@@ -1,7 +1,7 @@
-# Write tests to check the correctness of VoltageTier and Voltage from gamelogic.Electricity
+# Write tests to check the correctness of VoltageTier and Voltage from gamelogic.electricity
 import unittest
 # Correct the import path
-from gamelogic.Electricity import VoltageTier, Voltage
+from gamelogic.electricity import VoltageTier, Voltage
 
 class TestVoltageTier(unittest.TestCase):
     def test_from_tier_num(self):

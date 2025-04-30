@@ -4,10 +4,10 @@ import json
 from pydantic import ValidationError
 import yaml
 import args
-from gamelogic.Electricity import Voltage, VoltageTier
-from gamelogic.Items import make_itemstack
-from gamelogic.Machines import StandardOverclockMachineRecipe, MachineRecipe, PerfectOverclockMachineRecipe
-from gamelogic.GameTime import GameTime
+from gamelogic.electricity import Voltage, VoltageTier
+from gamelogic.items import make_itemstack
+from gamelogic.machines import StandardOverclockMachineRecipe, MachineRecipe, PerfectOverclockMachineRecipe
+from gamelogic.game_time import GameTime
 from models import FactoryConfig, TargetRate, make_target
 import os
 

@@ -1,8 +1,8 @@
 import math
-from gamelogic.Electricity import Voltage, VoltageTier
-from gamelogic.Items import ItemStack
-from .Base import MachineRecipe
-from gamelogic.GameTime import GameTime
+from gamelogic.electricity import Voltage, VoltageTier
+from gamelogic.items import ItemStack
+from .base import MachineRecipe
+from gamelogic.game_time import GameTime
 
 class PerfectOverclockMachineRecipe(MachineRecipe):
 

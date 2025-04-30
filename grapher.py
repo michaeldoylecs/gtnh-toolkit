@@ -9,7 +9,7 @@ import graphviz # type: ignore
 import pyomo.environ as pyomo # type: ignore
 
 import args
-from gamelogic.Machines import MachineRecipe
+from gamelogic.machines import MachineRecipe
 from models import Item, make_item
 
 EDGE_COLOR_ITERATOR = itertools.cycle([
@@ -354,7 +354,7 @@ def build_solution_graph(model: pyomo.Model, machine_id_to_recipe_map: dict[str,
 
 
 def draw(graph: SolutionGraph):
-    def applySISymbols(number: float) -> str:
+    def apply_si_symbols(number: float) -> str:
         suffixes = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y', 'R', 'Q']
 
         # Don't apply suffixes to small numbers
@@ -402,8 +402,8 @@ def draw(graph: SolutionGraph):
             '</table>',
         ])
 
-        machine_eu_amortized = applySISymbols(machine.recipe.eu_per_gametick.voltage * machine.quantity)
-        eu_per_machine = applySISymbols(machine.recipe.eu_per_gametick.voltage)
+        machine_eu_amortized = apply_si_symbols(machine.recipe.eu_per_gametick.voltage * machine.quantity)
+        eu_per_machine = apply_si_symbols(machine.recipe.eu_per_gametick.voltage)
         machine_table = ''.join([
             '<table border="0" bgcolor="white" cellspacing="0">',
             '<tr>',
@@ -515,7 +515,7 @@ def draw(graph: SolutionGraph):
                         '<FONT color="white">Input EU/t</FONT>',
                     '</td>',
                     '<td border="0" cellpadding="4" cellspacing="0" align="right">',
-                        f'<FONT color="{colors['red']}">{applySISymbols(average_eu_per_tick_in)}</FONT>',
+                        f'<FONT color="{colors['red']}">{apply_si_symbols(average_eu_per_tick_in)}</FONT>',
                     '</td>',
                 '</tr>',
                 '<tr>',
