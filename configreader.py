@@ -10,6 +10,14 @@ from gamelogic.GameTime import GameTime
 from models import FactoryConfig, TargetRate, make_target
 import os
 
+# Define a mapping from machine name identifiers to recipe classes
+# Using uppercase keys for case-insensitive matching later
+MACHINE_NAME_TO_RECIPE_CLASS: dict[str, type[MachineRecipe]] = {
+    "EBF": PerfectOverclockMachineRecipe,
+    # Add other specific machine types and their classes here
+    # e.g., "ASSEMBLYLINE": SomeOtherRecipeClass,
+}
+
 @pdataclass
 class InputRecipe:
     m: str
@@ -54,13 +62,13 @@ def load_factory_config(file_path: str) -> Optional[FactoryConfig]:
         duration = GameTime.from_ticks(raw_recipe.dur)
         eu_per_gametick = raw_recipe.eut
 
-        # Select the appropriate recipe class based on the machine name
-        # Example: Use PerfectOverclockMachineRecipe for EBFs, Standard otherwise
-        # TODO: Refine this mapping as needed for other machine types
-        if "EBF" in name.upper(): # Check if 'EBF' is in the machine name (case-insensitive)
-            recipe_class = PerfectOverclockMachineRecipe
-        else:
-            recipe_class = StandardOverclockMachineRecipe
+        # Select the appropriate recipe class using the map, default to Standard
+        recipe_class = StandardOverclockMachineRecipe # Default value
+        # Check if any key from the map is present in the machine name (case-insensitive)
+        for key, cls in MACHINE_NAME_TO_RECIPE_CLASS.items():
+            if key in name.upper():
+                recipe_class = cls
+                break # Use the first match found
 
         recipe = recipe_class(name, voltage_tier, inputs, outputs, duration, eu_per_gametick)
         recipes.append(recipe)
