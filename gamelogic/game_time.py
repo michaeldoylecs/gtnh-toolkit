@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 from typing import Union
 
 TICKS_PER_SECOND = 20
@@ -29,13 +30,13 @@ class GameTime:
             raise ValueError("Duration in seconds cannot be negative")
         return cls(_internal_seconds=float(seconds))
 
-    def as_ticks(self) -> float:
+    def as_ticks(self) -> int:
         """Returns the duration in game ticks as a float for precision."""
-        return self._internal_seconds * TICKS_PER_SECOND
+        return int(math.ceil(self._internal_seconds * TICKS_PER_SECOND))
 
     def as_seconds(self) -> float:
         """Returns the duration in seconds, rounded to the nearest tick."""
-        return math.ceil(self._internal_seconds / TICKS_PER_SECOND)
+        return roundToBase(self._internal_seconds / TICKS_PER_SECOND, 0.05)
 
     def as_exact_seconds(self) -> float:
         """Returns the duration in seconds."""
@@ -109,3 +110,6 @@ class GameTime:
         if not isinstance(other, GameTime):
             return NotImplemented
         return self._internal_seconds >= other._internal_seconds or self.__eq__(other)
+
+def roundToBase(x: Union[int, float], base: Union[int, float])-> float:
+    return float(base * round(x / base))
