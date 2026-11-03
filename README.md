@@ -14,7 +14,7 @@ The design is heavily inspired by [gtnh-flow](https://github.com/OrderedSet86/gt
 ## Usage
 I use `uv` for managing dependencies and python environments, so instructions will use `uv` for commands. If you use something else, use the equivalent commands to install dependencies and run the program.
 
-0) Install the Cbc dependency listed in the dependency section of this file. 
+0) Install the dependencies listed in the dependency section of this file. 
 
 1) Write a factory config file that specifies all recipes to be considered as well as your desired item output rate.
 Currently, JSON and YAML files are supported.
@@ -23,6 +23,7 @@ Currently, JSON and YAML files are supported.
 ```yaml
 recipes:
   - m: Electrolyzer
+    tier: MV          # voltage tier the machine runs at
     inputs:
       water: 500      # per craft
     outputs:
@@ -32,6 +33,7 @@ recipes:
     eut: 100          # EU per gametick
 
   - m: Large Chemical Reactor
+    tier: HV                  # voltage tier the machine runs at
     inputs:
       sulfur: 1               # per craft
       hydrogen: 2000          # per craft
@@ -49,6 +51,9 @@ targets:
 ## Dependencies
 
  - [Cbc](https://github.com/coin-or/Cbc/tree/master)
+ - [Graphviz](https://graphviz.org/)
+
+If you use Nix, `flake.nix` provides both of these, along with `uv` and a compatible Python, scoped to this directory. Enter the shell with `nix develop`, or run `echo 'use flake' > .envrc && direnv allow` to load it automatically whenever you `cd` in.
 
 ## Development
 
